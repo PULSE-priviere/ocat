@@ -109,6 +109,18 @@ export default function Home() {
               })}
             </div>
 
+            {/* Commentaire global */}
+            {(() => {
+              const globalComment = records.find(r => r.fields['Commentaire global'])?.fields['Commentaire global'];
+              if (!globalComment) return null;
+              return (
+                <div style={{background:'#fff',borderRadius:12,padding:'16px 20px',marginBottom:24,border:'1px solid #e2e8f0',borderLeft:'4px solid #0f172a'}}>
+                  <div style={{fontSize:11,fontWeight:700,color:'#0f172a',marginBottom:6,textTransform:'uppercase',letterSpacing:0.5}}>Commentaire global</div>
+                  <div style={{fontSize:14,color:'#334155',lineHeight:1.6,fontStyle:'italic'}}>{globalComment}</div>
+                </div>
+              );
+            })()}
+
             {/* Radar chart */}
             <div style={{background:'#fff',borderRadius:12,padding:'20px 24px',marginBottom:24,border:'1px solid #e2e8f0'}}>
               <h2 style={{fontSize:15,fontWeight:700,color:'#1e293b',margin:'0 0 16px'}}>Scores par section</h2>
@@ -182,7 +194,7 @@ export default function Home() {
 
                     {isOpen && (
                       <div style={{padding:'0 18px 18px',borderTop:'1px solid #f1f5f9'}} onClick={e => e.stopPropagation()}>
-                        <SectionDetail sec={sec} secName={secName} questions={secQs} presentEvals={presentEvals} getRecordForEval={getRecordForEval}/>
+                        <SectionDetail sec={sec} secName={secName} questions={secQs} presentEvals={presentEvals} getRecordForEval={getRecordForEval} records={records}/>
                       </div>
                     )}
                   </div>
@@ -207,7 +219,7 @@ export default function Home() {
   );
 }
 
-function SectionDetail({ sec, secName, questions, presentEvals, getRecordForEval }) {
+function SectionDetail({ sec, secName, questions, presentEvals, getRecordForEval, records }) {
   const SCORE_GROUPS = [
     { score: 1, label: 'Non mis en place', bg: '#fef2f2', border: '#fecaca', color: '#dc2626' },
     { score: 2, label: 'Partiellement mis en place', bg: '#fffbeb', border: '#fde68a', color: '#d97706' },
@@ -236,8 +248,39 @@ function SectionDetail({ sec, secName, questions, presentEvals, getRecordForEval
     return 0;
   });
 
+  // Collect section comments from all evaluations
+  const sectionComments = presentEvals.map(evalType => {
+    const rec = getRecordForEval(evalType);
+    if (!rec) return null;
+    // Find the comment field for this section (Commentaire_SX_...)
+    const commentEntry = Object.entries(rec.fields).find(([k]) => k.startsWith(`Commentaire_S${sec}_`));
+    const comment = commentEntry ? commentEntry[1] : '';
+    return comment ? { evalType, comment } : null;
+  }).filter(Boolean);
+
   return (
     <div style={{marginTop:20}}>
+      {/* Section comments */}
+      {sectionComments.length > 0 && (
+        <div style={{marginBottom:20}}>
+          {sectionComments.map(({evalType, comment}) => (
+            <div key={evalType} style={{
+              padding:'12px 16px', borderRadius:8, marginBottom:8,
+              background:'#f8fafc',
+              borderLeft:`3px solid ${EVAL_COLORS[evalType]}`,
+              border:'1px solid #e2e8f0',
+              borderLeftWidth:'3px',
+              borderLeftStyle:'solid',
+              borderLeftColor:EVAL_COLORS[evalType]
+            }}>
+              <div style={{fontSize:11,fontWeight:700,color:EVAL_COLORS[evalType],marginBottom:4,textTransform:'uppercase',letterSpacing:0.5}}>
+                Observation — {EVAL_SHORT[evalType]}
+              </div>
+              <div style={{fontSize:13,color:'#334155',lineHeight:1.6,fontStyle:'italic'}}>{comment}</div>
+            </div>
+          ))}
+        </div>
+      )}
       {SCORE_GROUPS.map(group => {
         const groupRows = qRows.filter(r => r.minScore === group.score);
         if (groupRows.length === 0) return null;
