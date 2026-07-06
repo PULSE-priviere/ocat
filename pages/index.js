@@ -3,29 +3,81 @@ import {
   RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
   Legend, ResponsiveContainer, Tooltip
 } from 'recharts';
-import { SEC_NAMES, SCORE_FIELDS, QUESTIONS, EVAL_ORDER, EVAL_COLORS, EVAL_SHORT } from '../config';
+import {
+  SEC_NAMES, SEC_NAMES_EN, SCORE_FIELDS, QUESTIONS,
+  EVAL_ORDER, EVAL_COLORS, EVAL_SHORT
+} from '../config';
 
-// ── Safe value extractors ─────────────────────────────────────────────────────
-function safeNum(val) {
-  if (val === null || val === undefined) return null;
-  if (typeof val === 'object') return null;
-  const n = Number(val);
-  return isNaN(n) ? null : n;
+// ── Safe extractors ───────────────────────────────────────────────────────────
+function safeNum(v) {
+  if (v === null || v === undefined || typeof v === 'object') return null;
+  const n = Number(v); return isNaN(n) ? null : n;
 }
-function safeStr(val) {
-  if (val === null || val === undefined) return '';
-  if (typeof val === 'object') return '';
-  return String(val);
+function safeStr(v) {
+  if (v === null || v === undefined || typeof v === 'object') return '';
+  return String(v);
 }
-function getScoreNum(val) {
-  const s = safeStr(val);
+function getScoreNum(v) {
+  const s = safeStr(v);
   if (s.startsWith('1')) return 1;
   if (s.startsWith('2')) return 2;
   if (s.startsWith('3')) return 3;
   return null;
 }
 
-// ── Palette & tokens ──────────────────────────────────────────────────────────
+// ── i18n strings ──────────────────────────────────────────────────────────────
+const I18N = {
+  fr: {
+    title: 'Diagnostic organisationnel',
+    selectOrg: 'Sélectionner une organisation',
+    selectPlaceholder: 'Sélectionner une organisation',
+    loading: 'Chargement des données...',
+    noEval: 'Aucune évaluation trouvée pour cette organisation.',
+    selectPrompt: 'Sélectionnez une organisation pour afficher son diagnostic.',
+    scoresSection: 'Scores par section',
+    detailSection: 'Détail par section',
+    clickToExpand: '— cliquer pour développer',
+    accompagnement: 'Demandes d\'accompagnement',
+    accompagnementRequested: 'Accompagnement demandé',
+    show: 'Afficher',
+    all: 'Toutes',
+    observation: 'Observation',
+    groups: {
+      1: 'Non mis en place',
+      2: 'Partiellement mis en place',
+      3: 'Documenté et opérationnel',
+      99: 'Non répondu / Non applicable',
+    },
+    question: 'question',
+    questions: 'questions',
+  },
+  en: {
+    title: 'Organisational Diagnostic',
+    selectOrg: 'Select an organisation',
+    selectPlaceholder: 'Select an organisation',
+    loading: 'Loading data...',
+    noEval: 'No evaluation found for this organisation.',
+    selectPrompt: 'Select an organisation to display its diagnostic.',
+    scoresSection: 'Section scores',
+    detailSection: 'Section detail',
+    clickToExpand: '— click to expand',
+    accompagnement: 'Support requests',
+    accompagnementRequested: 'Support requested',
+    show: 'Show',
+    all: 'All',
+    observation: 'Observation',
+    groups: {
+      1: 'Not in place',
+      2: 'Partially in place',
+      3: 'Documented and operational',
+      99: 'Not answered / Not applicable',
+    },
+    question: 'question',
+    questions: 'questions',
+  },
+};
+
+// ── Design tokens ─────────────────────────────────────────────────────────────
 const C = {
   navy:   '#1B3A5C',
   ink:    '#0F172A',
@@ -41,13 +93,13 @@ const C = {
 };
 
 const SCORE_STYLE = {
-  1:  { color: C.red,    bg: '#FEF2F2', border: '#FECACA', label: 'Non mis en place' },
-  2:  { color: C.orange, bg: '#FFFBEB', border: '#FDE68A', label: 'Partiellement mis en place' },
-  3:  { color: C.green,  bg: '#F0FDF4', border: '#BBF7D0', label: 'Documenté et opérationnel' },
-  99: { color: C.muted,  bg: C.bg,      border: C.rule,    label: 'Non répondu / Non applicable' },
+  1:  { color: C.red,    bg: '#FEF2F2', border: '#FECACA' },
+  2:  { color: C.orange, bg: '#FFFBEB', border: '#FDE68A' },
+  3:  { color: C.green,  bg: '#F0FDF4', border: '#BBF7D0' },
+  99: { color: C.muted,  bg: C.bg,      border: C.rule    },
 };
 
-// ── Shared micro-components ───────────────────────────────────────────────────
+// ── Micro-components ──────────────────────────────────────────────────────────
 function ScoreChip({ val }) {
   const s = getScoreNum(val);
   const st = SCORE_STYLE[s] || SCORE_STYLE[99];
@@ -58,32 +110,44 @@ function ScoreChip({ val }) {
       padding: '2px 8px', borderRadius: 4,
       background: st.bg, color: st.color,
       border: `1px solid ${st.border}`,
-      fontSize: 11, fontWeight: 700, letterSpacing: 0.2,
+      fontSize: 11, fontWeight: 700,
     }}>{label}</span>
   );
 }
 
-function Label({ children, style }) {
+function Tag({ children, color = C.muted, bg = C.bg, border = C.rule }) {
   return (
     <span style={{
-      fontSize: 10, fontWeight: 700, letterSpacing: 1,
-      textTransform: 'uppercase', color: C.muted, ...style
+      display: 'inline-block', padding: '1px 7px', borderRadius: 3,
+      background: bg, color, border: `1px solid ${border}`,
+      fontSize: 10, fontWeight: 700, letterSpacing: 0.6, textTransform: 'uppercase',
     }}>{children}</span>
   );
 }
 
-function Card({ children, style }) {
+function Card({ children, style, onClick }) {
   return (
-    <div style={{
+    <div onClick={onClick} style={{
       background: C.white, borderRadius: 10,
-      border: `1px solid ${C.rule}`,
-      ...style
+      border: `1px solid ${C.rule}`, ...style,
     }}>{children}</div>
   );
 }
 
+function UpperLabel({ children, style }) {
+  return (
+    <span style={{
+      fontSize: 10, fontWeight: 700, letterSpacing: 1,
+      textTransform: 'uppercase', color: C.muted, ...style,
+    }}>{children}</span>
+  );
+}
+
 // ── Section detail ────────────────────────────────────────────────────────────
-function SectionDetail({ sec, questions, presentEvals, getRecordForEval }) {
+function SectionDetail({ sec, questions, presentEvals, getRecordForEval, lang }) {
+  const t = I18N[lang];
+  const secNames = lang === 'en' ? SEC_NAMES_EN : SEC_NAMES;
+
   const qRows = questions.map(q => {
     const scores = {}, appuis = {};
     let minScore = 99;
@@ -98,23 +162,35 @@ function SectionDetail({ sec, questions, presentEvals, getRecordForEval }) {
       if (s) minScore = Math.min(minScore, s);
     }
     const hasAppui = Object.values(appuis).some(Boolean);
-    return { ...q, scores, appuis, hasAppui, minScore };
+    const label = lang === 'en' ? q.en : q.fr;
+    return { ...q, label, scores, appuis, hasAppui, minScore };
   }).sort((a, b) => {
     if (a.minScore !== b.minScore) return a.minScore - b.minScore;
     if (a.hasAppui !== b.hasAppui) return a.hasAppui ? -1 : 1;
     return 0;
   });
 
+  const COMMENT_FIELDS = {
+    '1': 'Commentaire_S1_Gouvernance',
+    '2': 'Commentaire_S2_Finances',
+    '3': 'Commentaire_S3_Strategie',
+    '4': 'Commentaire_S4_RH',
+    '5': 'Commentaire_S5_Operations',
+    '6': 'Commentaire_S6_MEAL',
+    '7': 'Commentaire_S7_Communication',
+    '8': 'Commentaire_S8_Culture',
+    '9': 'Commentaire_S9_Relations',
+  };
   const comments = presentEvals.map(e => {
     const rec = getRecordForEval(e);
     if (!rec) return null;
-    const entry = Object.entries(rec.fields).find(([k]) => k.startsWith(`Commentaire_S${sec}_`));
-    const c = entry ? safeStr(entry[1]) : '';
+    const fieldName = COMMENT_FIELDS[sec];
+    const c = fieldName ? safeStr(rec.fields[fieldName]) : '';
     return c ? { evalType: e, comment: c } : null;
   }).filter(Boolean);
 
   return (
-    <div style={{ marginTop: 20, paddingTop: 20, borderTop: `1px solid ${C.rule}` }}>
+    <div style={{ paddingTop: 20, marginTop: 4 }}>
       {comments.length > 0 && (
         <div style={{ marginBottom: 20 }}>
           {comments.map(({ evalType, comment }) => (
@@ -123,9 +199,9 @@ function SectionDetail({ sec, questions, presentEvals, getRecordForEval }) {
               background: '#FAFBFC',
               borderLeft: `3px solid ${EVAL_COLORS[evalType]}`,
             }}>
-              <Label style={{ color: EVAL_COLORS[evalType], display: 'block', marginBottom: 4 }}>
-                Observation — {EVAL_SHORT[evalType]}
-              </Label>
+              <UpperLabel style={{ color: EVAL_COLORS[evalType], display: 'block', marginBottom: 4 }}>
+                {t.observation} — {EVAL_SHORT[evalType]}
+              </UpperLabel>
               <p style={{ margin: 0, fontSize: 13, color: C.mid, lineHeight: 1.65, fontStyle: 'italic' }}>
                 {comment}
               </p>
@@ -138,41 +214,37 @@ function SectionDetail({ sec, questions, presentEvals, getRecordForEval }) {
         const group = qRows.filter(r => r.minScore === sg);
         if (!group.length) return null;
         const st = SCORE_STYLE[sg];
+        const qty = group.length;
         return (
           <div key={sg} style={{ marginBottom: 24 }}>
             <div style={{
-              display: 'flex', alignItems: 'center', gap: 8,
-              padding: '5px 12px', borderRadius: 5, marginBottom: 8,
+              display: 'flex', alignItems: 'center', gap: 10,
+              padding: '6px 14px', borderRadius: 5, marginBottom: 10,
               background: st.bg, borderLeft: `3px solid ${st.color}`,
             }}>
-              <span style={{ fontSize: 12, fontWeight: 800, color: st.color }}>
-                {sg === 99 ? '—' : sg}
-              </span>
-              <span style={{ fontSize: 11, fontWeight: 600, color: st.color, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                {st.label}
+              <span style={{ fontSize: 13, fontWeight: 800, color: st.color }}>{sg === 99 ? '—' : sg}</span>
+              <span style={{ fontSize: 11, fontWeight: 600, color: st.color, textTransform: 'uppercase', letterSpacing: 0.4 }}>
+                {t.groups[sg]}
               </span>
               <span style={{ fontSize: 11, color: st.color, opacity: 0.55, marginLeft: 'auto' }}>
-                {group.length} question{group.length > 1 ? 's' : ''}
+                {qty} {qty > 1 ? t.questions : t.question}
               </span>
             </div>
             {group.map(row => (
               <div key={row.id} style={{
                 display: 'flex', alignItems: 'flex-start', gap: 12,
-                padding: '10px 14px', marginBottom: 3, borderRadius: 6,
+                padding: '11px 14px', marginBottom: 4, borderRadius: 6,
                 background: row.hasAppui ? '#FFF8F8' : C.white,
                 border: `1px solid ${row.hasAppui ? '#FECACA' : C.rule}`,
               }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   {row.hasAppui && (
-                    <span style={{
-                      display: 'inline-block', marginRight: 8, marginBottom: 2,
-                      padding: '1px 6px', borderRadius: 3,
-                      background: '#FEE2E2', color: C.red,
-                      fontSize: 9, fontWeight: 700, letterSpacing: 0.8,
-                      textTransform: 'uppercase', verticalAlign: 'middle',
-                    }}>Accompagnement demandé</span>
+                    <Tag color={C.red} bg="#FEE2E2" border="#FECACA"
+                      style={{ marginRight: 8, marginBottom: 3, verticalAlign: 'middle', display: 'inline-block' }}>
+                      {t.accompagnementRequested}
+                    </Tag>
                   )}
-                  <span style={{ fontSize: 13, color: C.ink, lineHeight: 1.55 }}>{row.label}</span>
+                  <span style={{ fontSize: 13, color: C.ink, lineHeight: 1.6 }}>{row.label}</span>
                 </div>
                 <div style={{ display: 'flex', gap: 8, flexShrink: 0, alignItems: 'center', paddingTop: 2 }}>
                   {presentEvals.map(e => (
@@ -193,9 +265,11 @@ function SectionDetail({ sec, questions, presentEvals, getRecordForEval }) {
   );
 }
 
-// ── Accompagnement summary (collapsible) ──────────────────────────────────────
-function AppuiSummary({ presentEvals, getRecordForEval }) {
+// ── Collapsible support summary ───────────────────────────────────────────────
+function AppuiSummary({ presentEvals, getRecordForEval, lang }) {
   const [open, setOpen] = useState(false);
+  const t = I18N[lang];
+  const secNames = lang === 'en' ? SEC_NAMES_EN : SEC_NAMES;
 
   const items = [];
   for (const [sec] of Object.entries(SEC_NAMES)) {
@@ -204,7 +278,7 @@ function AppuiSummary({ presentEvals, getRecordForEval }) {
         const rec = getRecordForEval(e);
         return rec && safeStr(rec.fields[`Appui structure — ${q.id}`]) === 'Oui';
       });
-      if (evals.length) items.push({ sec, id: q.id, label: q.label, evals });
+      if (evals.length) items.push({ sec, id: q.id, label: lang === 'en' ? q.en : q.fr, evals });
     }
   }
   if (!items.length) return null;
@@ -221,17 +295,21 @@ function AppuiSummary({ presentEvals, getRecordForEval }) {
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <Label style={{ color: C.red }}>Demandes d'accompagnement</Label>
+          <UpperLabel style={{ color: C.red }}>{t.accompagnement}</UpperLabel>
           <span style={{ background: '#FEE2E2', color: C.red, fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 4 }}>
             {items.length}
           </span>
         </div>
-        <span style={{ fontSize: 18, color: C.muted, transform: open ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s', display: 'inline-block' }}>›</span>
+        <span style={{
+          fontSize: 18, color: C.muted, lineHeight: 1,
+          transform: open ? 'rotate(90deg)' : 'none',
+          transition: 'transform 0.15s', display: 'inline-block',
+        }}>›</span>
       </button>
 
       {open && (
         <div style={{ padding: '16px 20px' }}>
-          {Object.entries(SEC_NAMES).map(([sec, secName]) => {
+          {Object.entries(secNames).map(([sec, secName]) => {
             const secItems = items.filter(i => i.sec === sec);
             if (!secItems.length) return null;
             return (
@@ -242,10 +320,10 @@ function AppuiSummary({ presentEvals, getRecordForEval }) {
                 {secItems.map((item, i) => (
                   <div key={i} style={{
                     display: 'flex', gap: 10, alignItems: 'flex-start',
-                    padding: '8px 12px', borderRadius: 5,
+                    padding: '9px 12px', borderRadius: 5,
                     background: '#FFF8F8', border: `1px solid #FECACA`, marginBottom: 4,
                   }}>
-                    <span style={{ flexShrink: 0, fontSize: 10, fontWeight: 700, color: C.muted, paddingTop: 2 }}>{item.id}</span>
+                    <span style={{ flexShrink: 0, fontSize: 10, fontWeight: 700, color: C.muted, paddingTop: 1 }}>{item.id}</span>
                     <div style={{ flex: 1, fontSize: 12, color: C.ink, lineHeight: 1.5 }}>{item.label}</div>
                     <div style={{ display: 'flex', gap: 3, flexShrink: 0 }}>
                       {item.evals.map(e => (
@@ -265,7 +343,7 @@ function AppuiSummary({ presentEvals, getRecordForEval }) {
   );
 }
 
-// ── Main page ─────────────────────────────────────────────────────────────────
+// ── Main ──────────────────────────────────────────────────────────────────────
 export default function Home() {
   const [oscs, setOscs] = useState([]);
   const [selectedOSC, setSelectedOSC] = useState('');
@@ -274,6 +352,10 @@ export default function Home() {
   const [openSection, setOpenSection] = useState(null);
   const [directId, setDirectId] = useState(null);
   const [selectedEval, setSelectedEval] = useState(null);
+  const [lang, setLang] = useState('fr');
+
+  const t = I18N[lang];
+  const secNames = lang === 'en' ? SEC_NAMES_EN : SEC_NAMES;
 
   useEffect(() => {
     fetch('/api/oscs').then(r => r.json()).then(d => setOscs(d.oscs || []));
@@ -307,16 +389,14 @@ export default function Home() {
   const allPresentEvals = EVAL_ORDER.filter(e =>
     records.some(r => safeStr(r.fields["Type d'évaluation"]) === e)
   );
-  const presentEvals = selectedEval
-    ? allPresentEvals.filter(e => e === selectedEval)
-    : allPresentEvals;
+  const presentEvals = selectedEval ? allPresentEvals.filter(e => e === selectedEval) : allPresentEvals;
+  const getRecordForEval = (e) => records.find(r => safeStr(r.fields["Type d'évaluation"]) === e);
 
-  const getRecordForEval = (evalType) =>
-    records.find(r => safeStr(r.fields["Type d'évaluation"]) === evalType);
-
-  // Radar — always show all evals regardless of filter for context
   const radarData = Object.entries(SCORE_FIELDS).map(([sec, field]) => {
-    const entry = { section: SEC_NAMES[sec].split('&')[0].trim().split(',')[0].trim().split(' ').slice(0, 2).join(' ') };
+    const secLabel = lang === 'en'
+      ? (SEC_NAMES_EN[sec] || '').split(' ').slice(0, 2).join(' ')
+      : (SEC_NAMES[sec] || '').split('&')[0].trim().split(' ').slice(-1)[0];
+    const entry = { section: secLabel };
     for (const e of allPresentEvals) {
       const rec = getRecordForEval(e);
       entry[e] = rec ? (safeNum(rec.fields[field]) || 0) : 0;
@@ -334,52 +414,62 @@ export default function Home() {
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
         * { box-sizing: border-box; }
         button { font-family: inherit; }
+        select { font-family: inherit; }
       `}</style>
 
-      {/* Top navigation */}
+      {/* Navbar */}
       <nav style={{
-        background: C.navy, height: 64,
+        background: C.navy, height: 68,
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         padding: '0 48px', position: 'sticky', top: 0, zIndex: 100,
-        boxShadow: '0 2px 12px rgba(0,0,0,0.15)',
+        boxShadow: '0 2px 16px rgba(0,0,0,0.18)',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
           <img
             src="https://images.fillout.com/orgid-732662/flowpublicid-p3BgAaYgGLus/widgetid-mMJS/kXtZ75Zg8QSTBDfjg3Vcwb/PULSE_LOGO_COULEUR.svg?a=rtAAwtQK1rtQfYt7rqMdQS"
-            style={{ height: 36, filter: 'brightness(0) invert(1)' }}
+            style={{ height: 38, filter: 'brightness(0) invert(1)' }}
             alt="PULSE"
           />
-          <div style={{ width: 1, height: 28, background: 'rgba(255,255,255,0.15)' }} />
-          <span style={{
-            fontSize: 15, fontWeight: 600, color: 'rgba(255,255,255,0.90)',
-            letterSpacing: 0.3,
-          }}>Diagnostic organisationnel</span>
+          <div style={{ width: 1, height: 30, background: 'rgba(255,255,255,0.2)' }} />
+          <span style={{ fontSize: 16, fontWeight: 700, color: 'rgba(255,255,255,0.95)', letterSpacing: 0.2 }}>
+            {t.title}
+          </span>
         </div>
-        <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', letterSpacing: 0.5, textTransform: 'uppercase' }}>
-          PULSE / PPI
-        </span>
+        {/* Language switcher */}
+        <div style={{ display: 'flex', gap: 2, background: 'rgba(255,255,255,0.1)', borderRadius: 20, padding: 3 }}>
+          {['fr', 'en'].map(l => (
+            <button key={l} onClick={() => setLang(l)} style={{
+              padding: '4px 14px', borderRadius: 16, border: 'none', cursor: 'pointer',
+              background: lang === l ? C.white : 'transparent',
+              color: lang === l ? C.navy : 'rgba(255,255,255,0.7)',
+              fontSize: 12, fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase',
+              transition: 'all 0.15s',
+            }}>{l}</button>
+          ))}
+        </div>
       </nav>
 
-      <div style={{ maxWidth: 1080, margin: '0 auto', padding: '40px 40px 80px' }}>
+      <div style={{ maxWidth: 1080, margin: '0 auto', padding: '48px 40px 80px' }}>
 
         {/* OSC selector */}
         {!directId && (
-          <div style={{ marginBottom: 36 }}>
-            <Label style={{ display: 'block', marginBottom: 8 }}>Organisation</Label>
+          <div style={{ marginBottom: 40 }}>
+            <UpperLabel style={{ display: 'block', marginBottom: 8 }}>
+              {t.selectOrg}
+            </UpperLabel>
             <select
               value={selectedOSC}
               onChange={e => { setSelectedOSC(e.target.value); setOpenSection(null); setSelectedEval(null); }}
               style={{
-                padding: '10px 14px', borderRadius: 6,
+                padding: '11px 40px 11px 14px', borderRadius: 7,
                 border: `1.5px solid ${C.rule}`, background: C.white,
                 fontSize: 14, color: C.ink, minWidth: 340, cursor: 'pointer',
                 outline: 'none', appearance: 'none',
                 backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='none'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2394A3B8' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E")`,
                 backgroundRepeat: 'no-repeat', backgroundPosition: 'right 14px center',
-                paddingRight: 36,
               }}
             >
-              <option value="">Sélectionner une organisation</option>
+              <option value="">{t.selectPlaceholder}</option>
               {oscs.map(name => <option key={name} value={name}>{name}</option>)}
             </select>
           </div>
@@ -387,35 +477,29 @@ export default function Home() {
 
         {loading && (
           <div style={{ textAlign: 'center', padding: 80, color: C.muted, fontSize: 14 }}>
-            Chargement des données...
+            {t.loading}
           </div>
         )}
 
         {!loading && selectedOSC && records.length > 0 && (
           <>
-            {/* OSC header */}
-            <div style={{ marginBottom: 36 }}>
-              <Label style={{ display: 'block', marginBottom: 6 }}>
+            {/* Header */}
+            <div style={{ marginBottom: 40 }}>
+              <UpperLabel style={{ display: 'block', marginBottom: 6 }}>
                 {safeStr(records[0]?.fields?.Projet)} · {safeStr(records[0]?.fields?.Pays)}
-              </Label>
+              </UpperLabel>
               <h1 style={{
-                fontSize: 36, fontWeight: 900, color: C.ink,
-                margin: '0 0 12px', letterSpacing: -0.8, lineHeight: 1.1,
+                fontSize: 40, fontWeight: 900, color: C.ink,
+                margin: '0 0 16px', letterSpacing: -1, lineHeight: 1.08,
               }}>{selectedOSC}</h1>
-              {globalComment && (
-                <p style={{
-                  margin: 0, fontSize: 14, color: C.mid, lineHeight: 1.7,
-                  maxWidth: 680, fontStyle: 'italic',
-                  paddingLeft: 14, borderLeft: `3px solid ${C.rule}`,
-                }}>{globalComment}</p>
-              )}
+
             </div>
 
-            {/* Score cards */}
+            {/* Score cards — also act as filter on click */}
             <div style={{
               display: 'grid',
-              gridTemplateColumns: `repeat(${allPresentEvals.length}, minmax(150px, 200px))`,
-              gap: 12, marginBottom: 28,
+              gridTemplateColumns: `repeat(${allPresentEvals.length}, minmax(160px, 210px))`,
+              gap: 14, marginBottom: 32,
             }}>
               {allPresentEvals.map(evalType => {
                 const rec = getRecordForEval(evalType);
@@ -423,24 +507,24 @@ export default function Home() {
                 const niveau = safeStr(rec?.fields?.Niveau_Global);
                 const date = safeStr(rec?.fields?.['Date de soumission']);
                 const sc = score !== null ? (score >= 7 ? C.green : score >= 5 ? C.orange : C.red) : C.muted;
-                const isFiltered = selectedEval === evalType;
+                const isActive = selectedEval === evalType;
                 return (
-                  <Card key={evalType} style={{
-                    padding: '18px 20px',
-                    borderTop: `3px solid ${EVAL_COLORS[evalType]}`,
-                    cursor: allPresentEvals.length > 1 ? 'pointer' : 'default',
-                    outline: isFiltered ? `2px solid ${EVAL_COLORS[evalType]}` : 'none',
-                    outlineOffset: 2,
-                    transition: 'box-shadow 0.15s',
-                  }}
-                    onClick={() => allPresentEvals.length > 1 && setSelectedEval(isFiltered ? null : evalType)}
+                  <Card key={evalType}
+                    onClick={() => allPresentEvals.length > 1 && setSelectedEval(isActive ? null : evalType)}
+                    style={{
+                      padding: '20px 22px',
+                      borderTop: `3px solid ${EVAL_COLORS[evalType]}`,
+                      cursor: allPresentEvals.length > 1 ? 'pointer' : 'default',
+                      outline: isActive ? `2px solid ${EVAL_COLORS[evalType]}` : 'none',
+                      outlineOffset: 2,
+                    }}
                   >
-                    <Label style={{ color: EVAL_COLORS[evalType], display: 'block', marginBottom: 10 }}>
+                    <UpperLabel style={{ color: EVAL_COLORS[evalType], display: 'block', marginBottom: 12 }}>
                       {EVAL_SHORT[evalType]}
-                    </Label>
-                    <div style={{ fontSize: 32, fontWeight: 800, color: sc, lineHeight: 1, marginBottom: 6 }}>
+                    </UpperLabel>
+                    <div style={{ fontSize: 36, fontWeight: 800, color: sc, lineHeight: 1, marginBottom: 8 }}>
                       {score !== null ? score.toFixed(1) : '—'}
-                      <span style={{ fontSize: 14, fontWeight: 400, color: C.muted }}> / 10</span>
+                      <span style={{ fontSize: 15, fontWeight: 400, color: C.muted }}> / 10</span>
                     </div>
                     {niveau && <div style={{ fontSize: 11, color: C.muted, marginBottom: 2 }}>{niveau}</div>}
                     {date && <div style={{ fontSize: 11, color: C.muted }}>{date}</div>}
@@ -449,14 +533,14 @@ export default function Home() {
               })}
             </div>
 
-            {/* Eval filter pills — only when multiple evals and none filtered via card click */}
+            {/* Filter pills */}
             {allPresentEvals.length > 1 && (
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 28 }}>
-                <Label style={{ marginRight: 4 }}>Afficher</Label>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 32 }}>
+                <UpperLabel style={{ marginRight: 4 }}>{t.show}</UpperLabel>
                 {[null, ...allPresentEvals].map((e, i) => {
                   const active = selectedEval === e;
                   const color = e ? EVAL_COLORS[e] : C.ink;
-                  const label = e ? EVAL_SHORT[e] : 'Toutes';
+                  const label = e ? EVAL_SHORT[e] : t.all;
                   return (
                     <button key={i} onClick={() => setSelectedEval(e)} style={{
                       padding: '5px 16px', borderRadius: 20,
@@ -464,7 +548,7 @@ export default function Home() {
                       background: active ? color : C.white,
                       color: active ? C.white : C.mid,
                       fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                      letterSpacing: 0.2, transition: 'all 0.15s',
+                      transition: 'all 0.15s',
                     }}>{label}</button>
                   );
                 })}
@@ -472,54 +556,54 @@ export default function Home() {
             )}
 
             {/* Radar */}
-            <Card style={{ padding: '24px 24px 16px', marginBottom: 16 }}>
-              <Label style={{ display: 'block', marginBottom: 20 }}>Scores par section</Label>
-              <ResponsiveContainer width="100%" height={360}>
+            <Card style={{ padding: '28px 28px 16px', marginBottom: 14 }}>
+              <UpperLabel style={{ display: 'block', marginBottom: 22 }}>{t.scoresSection}</UpperLabel>
+              <ResponsiveContainer width="100%" height={370}>
                 <RadarChart cx="50%" cy="50%" outerRadius="72%" data={radarData}>
                   <PolarGrid stroke={C.rule} />
-                  <PolarAngleAxis
-                    dataKey="section"
-                    tick={{ fill: C.mid, fontSize: 11, fontWeight: 500 }}
-                  />
-                  <PolarRadiusAxis
-                    angle={90} domain={[0, 10]}
-                    tick={{ fill: C.muted, fontSize: 10 }}
-                    tickCount={6}
-                  />
+                  <PolarAngleAxis dataKey="section" tick={{ fill: C.mid, fontSize: 11, fontWeight: 500 }} />
+                  <PolarRadiusAxis angle={90} domain={[0, 10]} tick={{ fill: C.muted, fontSize: 10 }} tickCount={6} />
                   {allPresentEvals.map(e => (
-                    <Radar
-                      key={e}
-                      name={EVAL_SHORT[e]}
-                      dataKey={e}
-                      stroke={EVAL_COLORS[e]}
-                      fill={EVAL_COLORS[e]}
-                      fillOpacity={selectedEval && selectedEval !== e ? 0.03 : 0.12}
+                    <Radar key={e} name={EVAL_SHORT[e]} dataKey={e}
+                      stroke={EVAL_COLORS[e]} fill={EVAL_COLORS[e]}
+                      fillOpacity={selectedEval && selectedEval !== e ? 0.03 : 0.13}
                       strokeWidth={selectedEval && selectedEval !== e ? 1 : 2.5}
                       strokeDasharray={selectedEval && selectedEval !== e ? '4 4' : undefined}
                     />
                   ))}
-                  <Tooltip
-                    contentStyle={{
-                      background: C.white, border: `1px solid ${C.rule}`,
-                      borderRadius: 8, fontSize: 12,
-                      boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
-                    }}
-                  />
+                  <Tooltip contentStyle={{ background: C.white, border: `1px solid ${C.rule}`, borderRadius: 8, fontSize: 12, boxShadow: '0 4px 16px rgba(0,0,0,0.08)' }} />
                   <Legend wrapperStyle={{ paddingTop: 16, fontSize: 12 }} />
                 </RadarChart>
               </ResponsiveContainer>
             </Card>
 
+            {/* Global comment — after radar, before sections */}
+            {globalComment && (
+              <div style={{
+                padding: '16px 20px', borderRadius: 8, marginBottom: 16,
+                background: C.white, border: `1px solid ${C.rule}`,
+                borderLeft: `3px solid ${C.navy}`,
+              }}>
+                <UpperLabel style={{ color: C.navy, display: 'block', marginBottom: 6 }}>
+                  {lang === 'en' ? 'General observation' : 'Observation générale'}
+                </UpperLabel>
+                <p style={{ margin: 0, fontSize: 13, color: C.mid, lineHeight: 1.75, fontStyle: 'italic' }}>
+                  {globalComment}
+                </p>
+              </div>
+            )}
+
             {/* Section cards */}
-            <div style={{ marginBottom: 12 }}>
-              <Label>Détail par section</Label>
-              <span style={{ fontSize: 12, color: C.muted, marginLeft: 8 }}>— cliquez pour développer</span>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 14 }}>
+              <UpperLabel>{t.detailSection}</UpperLabel>
+              <span style={{ fontSize: 12, color: C.muted }}>{t.clickToExpand}</span>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 8, marginBottom: 24 }}>
-              {Object.entries(SEC_NAMES).map(([sec, secName]) => {
+              {Object.entries(secNames).map(([sec, secName]) => {
                 const isOpen = openSection === sec;
                 const secQs = QUESTIONS.filter(q => q.sec === sec);
+
                 let appuiCount = 0;
                 secQs.forEach(q => {
                   for (const e of presentEvals) {
@@ -529,26 +613,25 @@ export default function Home() {
                 });
 
                 return (
-                  <Card key={sec}
+                  <div key={sec}
+                    onClick={() => setOpenSection(isOpen ? null : sec)}
                     style={{
-                      overflow: 'hidden',
+                      background: C.white, borderRadius: 10, overflow: 'hidden',
                       gridColumn: isOpen ? '1 / -1' : undefined,
                       cursor: 'pointer',
                       border: isOpen ? `1.5px solid ${C.navy}` : `1px solid ${C.rule}`,
+                      transition: 'border-color 0.15s',
                     }}
-                    onClick={() => setOpenSection(isOpen ? null : sec)}
                   >
-                    <div style={{ padding: '14px 18px', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+                    <div style={{ padding: '16px 20px', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
                       <div style={{ flex: 1 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                          <span style={{
-                            background: '#EFF6FF', color: C.blue,
-                            fontSize: 10, fontWeight: 700, padding: '2px 7px',
-                            borderRadius: 4, letterSpacing: 0.5,
-                          }}>S{sec}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                          <span style={{ background: '#EFF6FF', color: C.blue, fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 4, letterSpacing: 0.5 }}>
+                            S{sec}
+                          </span>
                           <span style={{ fontSize: 13, fontWeight: 600, color: C.ink }}>{secName}</span>
                         </div>
-                        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                        <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
                           {presentEvals.map(e => {
                             const rec = getRecordForEval(e);
                             const score = safeNum(rec?.fields?.[SCORE_FIELDS[sec]]);
@@ -556,7 +639,7 @@ export default function Home() {
                             return (
                               <div key={e} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                                 <span style={{ width: 6, height: 6, borderRadius: '50%', background: EVAL_COLORS[e], flexShrink: 0 }} />
-                                <span style={{ fontSize: 13, fontWeight: 700, color: sc }}>
+                                <span style={{ fontSize: 14, fontWeight: 700, color: sc }}>
                                   {score !== null ? score.toFixed(1) : '—'}
                                 </span>
                               </div>
@@ -564,16 +647,14 @@ export default function Home() {
                           })}
                         </div>
                       </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, paddingTop: 2 }}>
                         {appuiCount > 0 && (
-                          <span style={{
-                            background: '#FEE2E2', color: C.red,
-                            fontSize: 10, fontWeight: 700, padding: '3px 8px',
-                            borderRadius: 4, border: `1px solid #FECACA`, letterSpacing: 0.2,
-                          }}>{appuiCount} accompagnement{appuiCount > 1 ? 's' : ''}</span>
+                          <span style={{ background: '#FEE2E2', color: C.red, fontSize: 10, fontWeight: 700, padding: '3px 9px', borderRadius: 4, border: `1px solid #FECACA` }}>
+                            {appuiCount}
+                          </span>
                         )}
                         <span style={{
-                          fontSize: 16, color: C.muted, lineHeight: 1,
+                          fontSize: 18, color: C.muted, lineHeight: 1,
                           transform: isOpen ? 'rotate(90deg)' : 'none',
                           transition: 'transform 0.15s', display: 'inline-block',
                         }}>›</span>
@@ -581,31 +662,35 @@ export default function Home() {
                     </div>
 
                     {isOpen && (
-                      <div style={{ padding: '0 18px 20px' }} onClick={e => e.stopPropagation()}>
+                      <div
+                        style={{ padding: '0 20px 24px', borderTop: `1px solid ${C.rule}` }}
+                        onClick={e => e.stopPropagation()}
+                      >
                         <SectionDetail
                           sec={sec} questions={secQs}
                           presentEvals={presentEvals}
                           getRecordForEval={getRecordForEval}
+                          lang={lang}
                         />
                       </div>
                     )}
-                  </Card>
+                  </div>
                 );
               })}
             </div>
 
-            <AppuiSummary presentEvals={presentEvals} getRecordForEval={getRecordForEval} />
+            <AppuiSummary presentEvals={presentEvals} getRecordForEval={getRecordForEval} lang={lang} />
           </>
         )}
 
         {!loading && selectedOSC && records.length === 0 && (
-          <Card style={{ padding: 48, textAlign: 'center', color: C.muted, fontSize: 14 }}>
-            Aucune évaluation trouvée pour cette organisation.
+          <Card style={{ padding: 56, textAlign: 'center', color: C.muted, fontSize: 14 }}>
+            {t.noEval}
           </Card>
         )}
         {!loading && !selectedOSC && !directId && (
-          <Card style={{ padding: 48, textAlign: 'center', color: C.muted, fontSize: 14 }}>
-            Sélectionnez une organisation pour afficher son diagnostic.
+          <Card style={{ padding: 56, textAlign: 'center', color: C.muted, fontSize: 14 }}>
+            {t.selectPrompt}
           </Card>
         )}
       </div>
