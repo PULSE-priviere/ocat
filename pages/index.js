@@ -29,6 +29,7 @@ export default function Home() {
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(false);
   const [openSection, setOpenSection] = useState(null);
+  const [directId, setDirectId] = useState(null); // record ID depuis ?id= dans l'URL
 
   useEffect(() => {
     // Charge les OSC pour le dropdown
@@ -37,6 +38,7 @@ export default function Home() {
     // Si ?id=RECORD_ID dans l'URL, charge directement cette OSC
     const params = new URLSearchParams(window.location.search);
     const recordId = params.get('id');
+    if (recordId) setDirectId(recordId);
     if (recordId) {
       setLoading(true);
       fetch(`/api/records?id=${encodeURIComponent(recordId)}`)
@@ -87,7 +89,7 @@ export default function Home() {
         </div>
 
         {/* OSC Selector — masqué si accès via lien direct ?id= */}
-        {!new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '').get('id') && (
+        {!directId && (
           <div style={{marginBottom:28}}>
             <label style={{display:'block',fontSize:12,fontWeight:600,color:'#64748b',marginBottom:6,textTransform:'uppercase',letterSpacing:0.5}}>
               Sélectionner une OSC
