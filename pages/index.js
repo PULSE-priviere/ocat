@@ -31,11 +31,31 @@ export default function Home() {
   const [openSection, setOpenSection] = useState(null);
 
   useEffect(() => {
+    // Charge les OSC pour le dropdown
     fetch('/api/oscs').then(r => r.json()).then(d => setOscs(d.oscs || []));
+
+    // Si ?id=RECORD_ID dans l'URL, charge directement cette OSC
+    const params = new URLSearchParams(window.location.search);
+    const recordId = params.get('id');
+    if (recordId) {
+      setLoading(true);
+      fetch(`/api/records?id=${encodeURIComponent(recordId)}`)
+        .then(r => r.json())
+        .then(d => {
+          if (d.records && d.records.length > 0) {
+            setRecords(d.records);
+            setSelectedOSC(d.oscName || d.records[0].fields["Nom de l'OSC"] || '');
+          }
+          setLoading(false);
+        });
+    }
   }, []);
 
   useEffect(() => {
     if (!selectedOSC) return;
+    // Ne recharge pas si les records sont déjà chargés via ?id=
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('id') && records.length > 0) return;
     setLoading(true);
     fetch(`/api/records?osc=${encodeURIComponent(selectedOSC)}`)
       .then(r => r.json())
@@ -66,20 +86,22 @@ export default function Home() {
           <p style={{fontSize:13,color:'#94a3b8',margin:'4px 0 0'}}>Suivi des capacités organisationnelles des OSC — PULSE/PPI</p>
         </div>
 
-        {/* OSC Selector */}
-        <div style={{marginBottom:28}}>
-          <label style={{display:'block',fontSize:12,fontWeight:600,color:'#64748b',marginBottom:6,textTransform:'uppercase',letterSpacing:0.5}}>
-            Sélectionner une OSC
-          </label>
-          <select
-            value={selectedOSC}
-            onChange={e => { setSelectedOSC(e.target.value); setOpenSection(null); }}
-            style={{padding:'10px 14px',borderRadius:8,border:'1.5px solid #e2e8f0',background:'#fff',fontSize:14,color:'#1e293b',minWidth:320,cursor:'pointer'}}
-          >
-            <option value="">— Choisir une OSC —</option>
-            {oscs.map(name => <option key={name} value={name}>{name}</option>)}
-          </select>
-        </div>
+        {/* OSC Selector — masqué si accès via lien direct ?id= */}
+        {!new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '').get('id') && (
+          <div style={{marginBottom:28}}>
+            <label style={{display:'block',fontSize:12,fontWeight:600,color:'#64748b',marginBottom:6,textTransform:'uppercase',letterSpacing:0.5}}>
+              Sélectionner une OSC
+            </label>
+            <select
+              value={selectedOSC}
+              onChange={e => { setSelectedOSC(e.target.value); setOpenSection(null); }}
+              style={{padding:'10px 14px',borderRadius:8,border:'1.5px solid #e2e8f0',background:'#fff',fontSize:14,color:'#1e293b',minWidth:320,cursor:'pointer'}}
+            >
+              <option value="">— Choisir une OSC —</option>
+              {oscs.map(name => <option key={name} value={name}>{name}</option>)}
+            </select>
+          </div>
+        )}
 
         {loading && <div style={{textAlign:'center',padding:40,color:'#94a3b8'}}>Chargement...</div>}
 
