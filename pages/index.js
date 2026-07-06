@@ -30,6 +30,7 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [openSection, setOpenSection] = useState(null);
   const [directId, setDirectId] = useState(null); // record ID depuis ?id= dans l'URL
+  const [selectedEval, setSelectedEval] = useState(null); // filtre par type d'évaluation
 
   useEffect(() => {
     // Charge les OSC pour le dropdown
@@ -64,7 +65,8 @@ export default function Home() {
       .then(d => { setRecords(d.records || []); setLoading(false); });
   }, [selectedOSC]);
 
-  const presentEvals = EVAL_ORDER.filter(e => records.some(r => r.fields["Type d'évaluation"] === e));
+  const allPresentEvals = EVAL_ORDER.filter(e => records.some(r => r.fields["Type d'évaluation"] === e));
+  const presentEvals = selectedEval ? allPresentEvals.filter(e => e === selectedEval) : allPresentEvals;
 
   const getRecordForEval = (evalType) => records.find(r => r.fields["Type d'évaluation"] === evalType);
 
@@ -72,7 +74,7 @@ export default function Home() {
     const entry = { section: SEC_NAMES[sec].split(' ')[0] };
     for (const evalType of presentEvals) {
       const rec = getRecordForEval(evalType);
-      entry[evalType] = rec ? (rec.fields[field] || 0) : 0;
+      entry[evalType] = rec ? (Number(rec.fields[field]) || 0) : 0;
     }
     return entry;
   });
@@ -113,7 +115,7 @@ export default function Home() {
             <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))',gap:12,marginBottom:28}}>
               {presentEvals.map(evalType => {
                 const rec = getRecordForEval(evalType);
-                const score = rec?.fields['Score_Global'];
+                const score = rec ? Number(rec.fields['Score_Global'] ?? 0) || null : null;
                 const niveau = rec?.fields['Niveau_Global'] || '';
                 const date = rec?.fields['Date de soumission'] || '';
                 return (
@@ -123,7 +125,7 @@ export default function Home() {
                       <span style={{fontSize:12,fontWeight:700,color:'#374151'}}>{EVAL_SHORT[evalType]}</span>
                     </div>
                     <div style={{fontSize:28,fontWeight:800,color:EVAL_COLORS[evalType],lineHeight:1}}>
-                      {score != null ? Number(score).toFixed(1) : '—'}
+                      {score != null ? score.toFixed(1) : '—'}
                       <span style={{fontSize:14,fontWeight:400,color:'#94a3b8'}}> /10</span>
                     </div>
                     <div style={{fontSize:11,color:'#64748b',marginTop:4}}>{niveau}</div>
@@ -132,6 +134,29 @@ export default function Home() {
                 );
               })}
             </div>
+
+            {/* Filtres par évaluation */}
+            {allPresentEvals.length > 1 && (
+              <div style={{display:'flex',gap:8,marginBottom:24,alignItems:'center'}}>
+                <span style={{fontSize:12,fontWeight:600,color:'#64748b',textTransform:'uppercase',letterSpacing:0.5}}>Afficher :</span>
+                <button
+                  onClick={() => setSelectedEval(null)}
+                  style={{padding:'6px 14px',borderRadius:20,border:'1.5px solid',fontSize:12,fontWeight:600,cursor:'pointer',
+                    borderColor:selectedEval===null?'#0f172a':'#e2e8f0',
+                    background:selectedEval===null?'#0f172a':'#fff',
+                    color:selectedEval===null?'#fff':'#64748b'}}
+                >Toutes</button>
+                {allPresentEvals.map(evalType => (
+                  <button key={evalType}
+                    onClick={() => setSelectedEval(selectedEval === evalType ? null : evalType)}
+                    style={{padding:'6px 14px',borderRadius:20,border:'1.5px solid',fontSize:12,fontWeight:600,cursor:'pointer',
+                      borderColor:selectedEval===evalType?EVAL_COLORS[evalType]:'#e2e8f0',
+                      background:selectedEval===evalType?EVAL_COLORS[evalType]:'#fff',
+                      color:selectedEval===evalType?'#fff':'#64748b'}}
+                  >{EVAL_SHORT[evalType]}</button>
+                ))}
+              </div>
+            )}
 
             {/* Commentaire global */}
             {(() => {
@@ -194,7 +219,7 @@ export default function Home() {
                         <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
                           {presentEvals.map(evalType => {
                             const rec = getRecordForEval(evalType);
-                            const score = rec?.fields[scoreField];
+                            const score = rec ? (Number(rec.fields[scoreField] ?? null) || null) : null;
                             return (
                               <div key={evalType} style={{display:'flex',alignItems:'center',gap:4}}>
                                 <span style={{width:7,height:7,borderRadius:'50%',background:EVAL_COLORS[evalType]}}/>
