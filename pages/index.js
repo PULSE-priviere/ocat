@@ -392,21 +392,41 @@ export default function Home() {
   const presentEvals = selectedEval ? allPresentEvals.filter(e => e === selectedEval) : allPresentEvals;
   const getRecordForEval = (e) => records.find(r => safeStr(r.fields["Type d'évaluation"]) === e);
 
+  // Use short keys for radar to avoid Recharts issues with special chars
+  const EVAL_KEY = {
+    "Baseline (début d'accompagnement)": 'baseline',
+    'Suivi intermédiaire': 'suivi',
+    "Endline (fin d'accompagnement)": 'endline',
+  };
+
+  // Short section labels for radar axes
+  const RADAR_LABELS = {
+    '1': { fr: 'Gouvernance', en: 'Governance' },
+    '2': { fr: 'Finances',    en: 'Finances' },
+    '3': { fr: 'Stratégie',   en: 'Strategy' },
+    '4': { fr: 'RH',          en: 'HR' },
+    '5': { fr: 'Opérations',  en: 'Operations' },
+    '6': { fr: 'MEAL',        en: 'MEAL' },
+    '7': { fr: 'Comm.',       en: 'Comm.' },
+    '8': { fr: 'Culture',     en: 'Culture' },
+    '9': { fr: 'Relations',   en: 'Relations' },
+  };
+
   const radarData = Object.entries(SCORE_FIELDS).map(([sec, field]) => {
-    const secLabel = lang === 'en'
-      ? (SEC_NAMES_EN[sec] || '').split(' ').slice(0, 2).join(' ')
-      : (SEC_NAMES[sec] || '').split('&')[0].trim().split(' ').slice(-1)[0];
-    const entry = { section: secLabel };
+    const entry = { section: RADAR_LABELS[sec]?.[lang] || `S${sec}` };
     for (const e of allPresentEvals) {
       const rec = getRecordForEval(e);
-      entry[e] = rec ? (safeNum(rec.fields[field]) || 0) : 0;
+      entry[EVAL_KEY[e]] = rec ? (safeNum(rec.fields[field]) || 0) : 0;
     }
     return entry;
   });
 
-  const globalComment = safeStr(
-    records.find(r => r.fields['Commentaire global'])?.fields?.['Commentaire global']
-  );
+  // Global comments per evaluation (filtered by selectedEval)
+  const globalComments = presentEvals.map(e => {
+    const rec = getRecordForEval(e);
+    const c = rec ? safeStr(rec.fields['Commentaire global']) : '';
+    return c ? { evalType: e, comment: c } : null;
+  }).filter(Boolean);
 
   return (
     <div style={{ fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif", background: C.bg, minHeight: '100vh' }}>
@@ -564,7 +584,7 @@ export default function Home() {
                   <PolarAngleAxis dataKey="section" tick={{ fill: C.mid, fontSize: 11, fontWeight: 500 }} />
                   <PolarRadiusAxis angle={90} domain={[0, 10]} tick={{ fill: C.muted, fontSize: 10 }} tickCount={6} />
                   {allPresentEvals.map(e => (
-                    <Radar key={e} name={EVAL_SHORT[e]} dataKey={e}
+                    <Radar key={e} name={EVAL_SHORT[e]} dataKey={EVAL_KEY[e]}
                       stroke={EVAL_COLORS[e]} fill={EVAL_COLORS[e]}
                       fillOpacity={selectedEval && selectedEval !== e ? 0.03 : 0.13}
                       strokeWidth={selectedEval && selectedEval !== e ? 1 : 2.5}
@@ -577,19 +597,23 @@ export default function Home() {
               </ResponsiveContainer>
             </Card>
 
-            {/* Global comment — after radar, before sections */}
-            {globalComment && (
-              <div style={{
-                padding: '16px 20px', borderRadius: 8, marginBottom: 16,
-                background: C.white, border: `1px solid ${C.rule}`,
-                borderLeft: `3px solid ${C.navy}`,
-              }}>
-                <UpperLabel style={{ color: C.navy, display: 'block', marginBottom: 6 }}>
-                  {lang === 'en' ? 'General observation' : 'Observation générale'}
-                </UpperLabel>
-                <p style={{ margin: 0, fontSize: 13, color: C.mid, lineHeight: 1.75, fontStyle: 'italic' }}>
-                  {globalComment}
-                </p>
+            {/* Global comments — after radar, before sections, one per eval */}
+            {globalComments.length > 0 && (
+              <div style={{ marginBottom: 16 }}>
+                {globalComments.map(({ evalType, comment }) => (
+                  <div key={evalType} style={{
+                    padding: '14px 20px', borderRadius: 8, marginBottom: 8,
+                    background: C.white, border: `1px solid ${C.rule}`,
+                    borderLeft: `3px solid ${EVAL_COLORS[evalType]}`,
+                  }}>
+                    <UpperLabel style={{ color: EVAL_COLORS[evalType], display: 'block', marginBottom: 6 }}>
+                      {lang === 'en' ? 'General observation' : 'Observation générale'} — {EVAL_SHORT[evalType]}
+                    </UpperLabel>
+                    <p style={{ margin: 0, fontSize: 13, color: C.mid, lineHeight: 1.75, fontStyle: 'italic' }}>
+                      {comment}
+                    </p>
+                  </div>
+                ))}
               </div>
             )}
 
