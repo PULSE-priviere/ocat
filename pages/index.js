@@ -471,27 +471,25 @@ export default function Home() {
 
       <div style={{ maxWidth: 1080, margin: '0 auto', padding: '48px 40px 80px' }}>
 
-        {/* OSC selector */}
-        {!directId && (
-          <div style={{ marginBottom: 40 }}>
-            <UpperLabel style={{ display: 'block', marginBottom: 8 }}>
-              {t.selectOrg}
-            </UpperLabel>
-            <select
-              value={selectedOSC}
-              onChange={e => { setSelectedOSC(e.target.value); setOpenSection(null); setSelectedEval(null); }}
-              style={{
-                padding: '11px 40px 11px 14px', borderRadius: 7,
-                border: `1.5px solid ${C.rule}`, background: C.white,
-                fontSize: 14, color: C.ink, minWidth: 340, cursor: 'pointer',
-                outline: 'none', appearance: 'none',
-                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='none'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2394A3B8' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E")`,
-                backgroundRepeat: 'no-repeat', backgroundPosition: 'right 14px center',
-              }}
-            >
-              <option value="">{t.selectPlaceholder}</option>
-              {oscs.map(name => <option key={name} value={name}>{name}</option>)}
-            </select>
+        {/* Homepage sans ?id= : page neutre */}
+        {!directId && !selectedOSC && !loading && (
+          <div style={{
+            display: 'flex', flexDirection: 'column', alignItems: 'center',
+            justifyContent: 'center', minHeight: '60vh', textAlign: 'center',
+          }}>
+            <img
+              src="https://images.fillout.com/orgid-732662/flowpublicid-p3BgAaYgGLus/widgetid-mMJS/kXtZ75Zg8QSTBDfjg3Vcwb/PULSE_LOGO_COULEUR.svg?a=rtAAwtQK1rtQfYt7rqMdQS"
+              style={{ height: 48, marginBottom: 32 }} alt="PULSE"
+            />
+            <h2 style={{ fontSize: 20, fontWeight: 700, color: C.ink, margin: '0 0 12px' }}>
+              {lang === 'en' ? 'Organisational Diagnostic' : 'Diagnostic organisationnel'}
+            </h2>
+            <p style={{ fontSize: 14, color: C.muted, maxWidth: 360, lineHeight: 1.6, margin: 0 }}>
+              {lang === 'en'
+                ? 'This page is accessible via a unique link sent by your PULSE facilitator.'
+                : 'Cette page est accessible via un lien unique envoyé par votre facilitateur PULSE.'
+              }
+            </p>
           </div>
         )}
 
