@@ -595,6 +595,44 @@ export default function Home() {
               </ResponsiveContainer>
             </Card>
 
+            {/* Scores table — after radar */}
+            <Card style={{ padding: '20px 24px', marginBottom: 14 }}>
+              <UpperLabel style={{ display: 'block', marginBottom: 16 }}>
+                {lang === 'en' ? 'Scores by section' : 'Scores par section'}
+              </UpperLabel>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                <thead>
+                  <tr style={{ borderBottom: `2px solid ${C.rule}` }}>
+                    <th style={{ textAlign: 'left', padding: '8px 12px', color: C.mid, fontWeight: 600 }}>Section</th>
+                    {allPresentEvals.map(e => (
+                      <th key={e} style={{ textAlign: 'center', padding: '8px 12px', color: EVAL_COLORS[e], fontWeight: 700, fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                        {EVAL_SHORT[e]}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {Object.entries(lang === 'en' ? SEC_NAMES_EN : SEC_NAMES).map(([sec, secName]) => (
+                    <tr key={sec} style={{ borderBottom: `1px solid ${C.rule}` }}>
+                      <td style={{ padding: '9px 12px', color: C.ink }}>
+                        <strong style={{ color: C.blue, marginRight: 6 }}>S{sec}</strong>{secName}
+                      </td>
+                      {allPresentEvals.map(e => {
+                        const rec = getRecordForEval(e);
+                        const score = safeNum(rec?.fields?.[SCORE_FIELDS[sec]]);
+                        const sc = score !== null ? (score >= 7 ? C.green : score >= 5 ? C.orange : C.red) : C.muted;
+                        return (
+                          <td key={e} style={{ textAlign: 'center', padding: '9px 12px', fontWeight: 700, color: sc, fontSize: 14 }}>
+                            {score !== null ? score.toFixed(1) : '—'}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </Card>
+
             {/* Global comments — after radar, before sections, one per eval */}
             {globalComments.length > 0 && (
               <div style={{ marginBottom: 16 }}>
