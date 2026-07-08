@@ -394,8 +394,10 @@ export default function ProjectPage() {
   const [records, setRecords] = useState([]);
   const [projet, setProjet] = useState('');
   const [loading, setLoading] = useState(true);
+  const [meta, setMeta] = useState(null);
   const [error, setError] = useState('');
   const [selectedOSC, setSelectedOSC] = useState('');
+  const [filterFC, setFilterFC] = useState('');
   const [search, setSearch] = useState('');
   const [lang, setLang] = useState('fr');
 
@@ -409,18 +411,22 @@ export default function ProjectPage() {
         if (d.error) { setError(d.error); setLoading(false); return; }
         setRecords(d.records || []);
         setProjet(d.projet || '');
+        setMeta({ type: d.type, facilitateur: d.facilitateur });
         setLoading(false);
       })
       .catch(() => { setError('Erreur de chargement'); setLoading(false); });
   }, []);
 
   const oscNames = [...new Set(records.map(r => safeStr(r.fields["Nom de l'OSC"])).filter(Boolean))].sort();
-  const filteredOSCs = oscNames.filter(n => n.toLowerCase().includes(search.toLowerCase()));
-  const oscRecords = selectedOSC ? records.filter(r => safeStr(r.fields["Nom de l'OSC"]) === selectedOSC) : [];
+  const facilitateurs = [...new Set(records.map(r => safeStr(r.fields["Facilitateur"])).filter(Boolean))].sort();
+  const filteredRecords = filterFC ? records.filter(r => safeStr(r.fields["Facilitateur"]) === filterFC) : records;
+  const filteredOscNames = [...new Set(filteredRecords.map(r => safeStr(r.fields["Nom de l'OSC"])).filter(Boolean))].sort();
+  const filteredOSCs = filteredOscNames.filter(n => n.toLowerCase().includes(search.toLowerCase()));
+  const oscRecords = selectedOSC ? filteredRecords.filter(r => safeStr(r.fields["Nom de l'OSC"]) === selectedOSC) : [];
 
   // Quick stats
-  const stats = oscNames.map(name => {
-    const recs = records.filter(r => safeStr(r.fields["Nom de l'OSC"]) === name);
+  const stats = filteredOscNames.map(name => {
+    const recs = filteredRecords.filter(r => safeStr(r.fields["Nom de l'OSC"]) === name);
     const latest = EVAL_ORDER.slice().reverse().find(e => recs.some(r => safeStr(r.fields["Type d'évaluation"]) === e));
     const latestRec = recs.find(r => safeStr(r.fields["Type d'évaluation"]) === latest);
     const score = safeNum(latestRec?.fields?.Score_Global);
@@ -449,7 +455,9 @@ export default function ProjectPage() {
           <img src="https://images.fillout.com/orgid-732662/flowpublicid-p3BgAaYgGLus/widgetid-mMJS/kXtZ75Zg8QSTBDfjg3Vcwb/PULSE_LOGO_COULEUR.svg?a=rtAAwtQK1rtQfYt7rqMdQS" style={{ height: 38, filter: 'brightness(0) invert(1)' }} alt="PULSE" />
           <div style={{ width: 1, height: 30, background: 'rgba(255,255,255,0.2)' }} />
           <span style={{ fontSize: 16, fontWeight: 700, color: 'rgba(255,255,255,0.95)' }}>
-            {lang === 'en' ? 'Project Dashboard' : 'Dashboard projet'} — {projet}
+            {meta?.type === 'fc'
+              ? `${meta.facilitateur}`
+              : `${lang === 'en' ? 'Project Dashboard' : 'Dashboard projet'} — ${projet}`}
           </span>
         </div>
         <div style={{ display: 'flex', gap: 2, background: 'rgba(255,255,255,0.1)', borderRadius: 20, padding: 3 }}>
@@ -464,7 +472,7 @@ export default function ProjectPage() {
         {/* KPIs */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 32 }}>
           {[
-            { label: lang === 'en' ? 'OSCs followed' : 'OSC suivies', value: oscNames.length },
+            { label: lang === 'en' ? 'OSCs followed' : 'OSC suivies', value: filteredOscNames.length },
             { label: lang === 'en' ? 'Assessments' : 'Évaluations', value: records.length },
             { label: lang === 'en' ? 'Avg. global score' : 'Score moyen', value: (() => {
               const scores = stats.map(s => s.score).filter(s => s !== null);
@@ -484,6 +492,18 @@ export default function ProjectPage() {
           <div>
             <Card style={{ overflow: 'hidden' }}>
               <div style={{ padding: '12px 14px', borderBottom: `1px solid ${C.rule}` }}>
+                {facilitateurs.length > 1 && meta?.type === 'project' && (
+                  <div style={{ marginBottom: 8 }}>
+                    <select
+                      value={filterFC}
+                      onChange={e => { setFilterFC(e.target.value); setSelectedOSC(''); }}
+                      style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: `1px solid ${C.rule}`, fontSize: 12, color: C.ink, marginBottom: 4, fontFamily: 'inherit', background: filterFC ? '#EFF6FF' : C.white }}
+                    >
+                      <option value="">{lang === 'en' ? 'All facilitators' : 'Tous les facilitateurs'}</option>
+                      {facilitateurs.map(fc => <option key={fc} value={fc}>{fc}</option>)}
+                    </select>
+                  </div>
+                )}
                 <input
                   value={search}
                   onChange={e => setSearch(e.target.value)}
