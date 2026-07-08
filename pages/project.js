@@ -395,6 +395,8 @@ export default function ProjectPage() {
   const [projet, setProjet] = useState('');
   const [loading, setLoading] = useState(true);
   const [meta, setMeta] = useState(null);
+  const [fcLinks, setFcLinks] = useState([]);
+  const [copiedFC, setCopiedFC] = useState(null);
   const [error, setError] = useState('');
   const [selectedOSC, setSelectedOSC] = useState('');
   const [filterFC, setFilterFC] = useState('');
@@ -412,6 +414,12 @@ export default function ProjectPage() {
         setRecords(d.records || []);
         setProjet(d.projet || '');
         setMeta({ type: d.type, facilitateur: d.facilitateur });
+        // Load FC share links (only for project managers)
+        if (d.type === 'project') {
+          fetch(`/api/fc-links?key=${k}`)
+            .then(r => r.json())
+            .then(fl => setFcLinks(fl.fcs || []));
+        }
         setLoading(false);
       })
       .catch(() => { setError('Erreur de chargement'); setLoading(false); });
@@ -485,6 +493,46 @@ export default function ProjectPage() {
             </Card>
           ))}
         </div>
+
+        {/* FC Share Links Panel — visible to project managers only */}
+        {meta?.type === 'project' && fcLinks.length > 0 && (
+          <Card style={{ padding: '16px 20px', marginBottom: 20 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <UpperLabel>{lang === 'en' ? 'Facilitator links' : 'Liens facilitateurs'}</UpperLabel>
+              <span style={{ fontSize: 11, color: C.muted }}>
+                {lang === 'en' ? 'Click to copy and share' : 'Cliquez pour copier et partager'}
+              </span>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 8 }}>
+              {fcLinks.map(fc => {
+                const isCopied = copiedFC === fc.name;
+                return (
+                  <button key={fc.name}
+                    onClick={() => {
+                      if (fc.url) {
+                        navigator.clipboard.writeText(fc.url);
+                        setCopiedFC(fc.name);
+                        setTimeout(() => setCopiedFC(null), 2000);
+                      }
+                    }}
+                    style={{
+                      padding: '8px 12px', borderRadius: 6, cursor: fc.url ? 'pointer' : 'default',
+                      border: `1px solid ${isCopied ? C.green : C.rule}`,
+                      background: isCopied ? '#F0FDF4' : C.white,
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      gap: 8, fontFamily: 'inherit', transition: 'all 0.15s',
+                    }}
+                  >
+                    <span style={{ fontSize: 12, fontWeight: 500, color: C.ink, textAlign: 'left' }}>{fc.name}</span>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: isCopied ? C.green : C.muted, flexShrink: 0 }}>
+                      {isCopied ? (lang === 'en' ? 'Copied!' : 'Copié !') : (lang === 'en' ? 'Copy link' : 'Copier')}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </Card>
+        )}
 
         <div style={{ display: 'grid', gridTemplateColumns: selectedOSC ? '280px 1fr' : '1fr', gap: 20, alignItems: 'start' }}>
 
