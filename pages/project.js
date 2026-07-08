@@ -31,11 +31,15 @@ const C = {
   red: '#DC2626', orange: '#D97706', green: '#16A34A', blue: '#2563EB',
 };
 
+const SCORE_LABELS = {
+  fr: { 1: 'Non mis en place', 2: 'Partiellement mis en place', 3: 'Documenté et opérationnel', 99: 'Non répondu / Non applicable' },
+  en: { 1: 'Not in place', 2: 'Partially in place', 3: 'Documented and operational', 99: 'Not answered / Not applicable' },
+};
 const SCORE_STYLE = {
-  1:  { color: C.red,    bg: '#FEF2F2', border: '#FECACA', label: 'Non mis en place' },
-  2:  { color: C.orange, bg: '#FFFBEB', border: '#FDE68A', label: 'Partiellement mis en place' },
-  3:  { color: C.green,  bg: '#F0FDF4', border: '#BBF7D0', label: 'Documenté et opérationnel' },
-  99: { color: C.muted,  bg: C.bg,      border: C.rule,    label: 'Non répondu / Non applicable' },
+  1:  { color: C.red,    bg: '#FEF2F2', border: '#FECACA' },
+  2:  { color: C.orange, bg: '#FFFBEB', border: '#FDE68A' },
+  3:  { color: C.green,  bg: '#F0FDF4', border: '#BBF7D0' },
+  99: { color: C.muted,  bg: C.bg,      border: C.rule    },
 };
 
 const EVAL_KEY = {
@@ -128,13 +132,13 @@ function SectionDetail({ sec, questions, presentEvals, getRecordForEval, lang })
           <div key={sg} style={{ marginBottom: 24 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 14px', borderRadius: 5, marginBottom: 10, background: st.bg, borderLeft: `3px solid ${st.color}` }}>
               <span style={{ fontSize: 13, fontWeight: 800, color: st.color }}>{sg === 99 ? '—' : sg}</span>
-              <span style={{ fontSize: 11, fontWeight: 600, color: st.color, textTransform: 'uppercase', letterSpacing: 0.4 }}>{st.label}</span>
+              <span style={{ fontSize: 11, fontWeight: 600, color: st.color, textTransform: 'uppercase', letterSpacing: 0.4 }}>{SCORE_LABELS[lang]?.[sg] || SCORE_LABELS.fr[sg]}</span>
               <span style={{ fontSize: 11, color: st.color, opacity: 0.55, marginLeft: 'auto' }}>{group.length} question{group.length > 1 ? 's' : ''}</span>
             </div>
             {group.map(row => (
               <div key={row.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '11px 14px', marginBottom: 4, borderRadius: 6, background: row.hasAppui ? '#FFF8F8' : C.white, border: `1px solid ${row.hasAppui ? '#FECACA' : C.rule}` }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  {row.hasAppui && <span style={{ display: 'inline-block', marginRight: 8, marginBottom: 3, padding: '1px 6px', borderRadius: 3, background: '#FEE2E2', color: C.red, fontSize: 9, fontWeight: 700, letterSpacing: 0.8, textTransform: 'uppercase', verticalAlign: 'middle' }}>Accompagnement demandé</span>}
+                  {row.hasAppui && <span style={{ display: 'inline-block', marginRight: 8, marginBottom: 3, padding: '1px 6px', borderRadius: 3, background: '#FEE2E2', color: C.red, fontSize: 9, fontWeight: 700, letterSpacing: 0.8, textTransform: 'uppercase', verticalAlign: 'middle' }}>{lang === 'en' ? 'Support requested' : 'Accompagnement demandé'}</span>}
                   <span style={{ fontSize: 13, color: C.ink, lineHeight: 1.6 }}>{row.label}</span>
                 </div>
                 <div style={{ display: 'flex', gap: 8, flexShrink: 0, alignItems: 'center', paddingTop: 2 }}>
