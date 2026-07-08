@@ -68,6 +68,16 @@ const COMMENT_FIELDS = {
   '9': 'Commentaire_S9_Relations',
 };
 
+
+const COUNTRY_TRANS = {
+  'Maroc': 'Morocco', 'Algerie': 'Algeria', 'Tunisie': 'Tunisia',
+  'Libye': 'Libya', 'Egypte': 'Egypt', 'Mauritanie': 'Mauritania',
+  'Afrique du Sud': 'South Africa', 'Autre': 'Other',
+};
+function displayCountry(val, lang) {
+  return lang === 'en' ? (COUNTRY_TRANS[val] || val) : val;
+}
+
 function UpperLabel({ children, style }) {
   return <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', color: C.muted, ...style }}>{children}</span>;
 }
@@ -264,11 +274,11 @@ function OSCDetail({ oscName, oscRecords, lang }) {
       {/* Filter pills */}
       {allPresentEvals.length > 1 && (
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 24 }}>
-          <UpperLabel style={{ marginRight: 4 }}>Afficher</UpperLabel>
+          <UpperLabel style={{ marginRight: 4 }}>{lang === 'en' ? 'Show' : 'Afficher'}</UpperLabel>
           {[null, ...allPresentEvals].map((e, i) => {
             const active = selectedEval === e;
             const color = e ? EVAL_COLORS[e] : C.ink;
-            const label = e ? EVAL_SHORT[e] : 'Toutes';
+            const label = e ? EVAL_SHORT[e] : (lang === 'en' ? 'All' : 'Toutes');
             return <button key={i} onClick={() => setSelectedEval(e)} style={{ padding: '5px 16px', borderRadius: 20, border: `1.5px solid ${active ? color : C.rule}`, background: active ? color : C.white, color: active ? C.white : C.mid, fontSize: 12, fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s', fontFamily: 'inherit' }}>{label}</button>;
           })}
         </div>
@@ -327,7 +337,7 @@ function OSCDetail({ oscName, oscRecords, lang }) {
         <div style={{ marginBottom: 16 }}>
           {globalComments.map(({ evalType, comment }) => (
             <div key={evalType} style={{ padding: '14px 20px', borderRadius: 8, marginBottom: 8, background: C.white, border: `1px solid ${C.rule}`, borderLeft: `3px solid ${EVAL_COLORS[evalType]}` }}>
-              <UpperLabel style={{ color: EVAL_COLORS[evalType], display: 'block', marginBottom: 6 }}>Observation générale — {EVAL_SHORT[evalType]}</UpperLabel>
+              <UpperLabel style={{ color: EVAL_COLORS[evalType], display: 'block', marginBottom: 6 }}>{lang === 'en' ? 'General observation' : 'Observation générale'} — {EVAL_SHORT[evalType]}</UpperLabel>
               <p style={{ margin: 0, fontSize: 13, color: C.mid, lineHeight: 1.75, fontStyle: 'italic' }}>{comment}</p>
             </div>
           ))}
@@ -336,8 +346,8 @@ function OSCDetail({ oscName, oscRecords, lang }) {
 
       {/* Section cards */}
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 12 }}>
-        <UpperLabel>Détail par section</UpperLabel>
-        <span style={{ fontSize: 12, color: C.muted }}>— cliquer pour développer</span>
+        <UpperLabel>{lang === 'en' ? 'Section detail' : 'Détail par section'}</UpperLabel>
+        <span style={{ fontSize: 12, color: C.muted }}>{lang === 'en' ? '— click to expand' : '— cliquer pour développer'}</span>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 8, marginBottom: 24 }}>
         {Object.entries(secNames).map(([sec, secName]) => {
@@ -403,7 +413,7 @@ export default function ProjectPage() {
   const [copiedFC, setCopiedFC] = useState(null);
   const [error, setError] = useState('');
   const [selectedOSC, setSelectedOSC] = useState('');
-  const [filterFC, setFilterFC] = useState('');
+  const [selectedFCs, setSelectedFCs] = useState(new Set()); // multi-select
   const [search, setSearch] = useState('');
   const [lang, setLang] = useState('fr');
 
@@ -431,7 +441,7 @@ export default function ProjectPage() {
 
   const oscNames = [...new Set(records.map(r => safeStr(r.fields["Nom de l'OSC"])).filter(Boolean))].sort();
   const facilitateurs = [...new Set(records.map(r => safeStr(r.fields["Facilitateur"])).filter(Boolean))].sort();
-  const filteredRecords = filterFC ? records.filter(r => safeStr(r.fields["Facilitateur"]) === filterFC) : records;
+  const filteredRecords = selectedFCs.size > 0 ? records.filter(r => selectedFCs.has(safeStr(r.fields["Facilitateur"]))) : records;
   const filteredOscNames = [...new Set(filteredRecords.map(r => safeStr(r.fields["Nom de l'OSC"])).filter(Boolean))].sort();
   const filteredOSCs = filteredOscNames.filter(n => n.toLowerCase().includes(search.toLowerCase()));
   const oscRecords = selectedOSC ? filteredRecords.filter(r => safeStr(r.fields["Nom de l'OSC"]) === selectedOSC) : [];
@@ -485,11 +495,11 @@ export default function ProjectPage() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 32 }}>
           {[
             { label: lang === 'en' ? 'OSCs followed' : 'OSC suivies', value: filteredOscNames.length },
-            { label: lang === 'en' ? 'Assessments' : 'Évaluations', value: records.length },
+            { label: lang === 'en' ? 'Assessments' : 'Évaluations', value: filteredRecords.length },
             { label: lang === 'en' ? 'Avg. global score' : 'Score moyen', value: (() => {
               const scores = stats.map(s => s.score).filter(s => s !== null);
-              return scores.length ? (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1) : '—';
-            })() + (stats.some(s => s.score !== null) ? ' / 10' : '') },
+              return scores.length ? (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1) + ' / 10' : '—';
+            })() },
           ].map((kpi, i) => (
             <Card key={i} style={{ padding: '16px 20px' }}>
               <UpperLabel style={{ display: 'block', marginBottom: 8 }}>{kpi.label}</UpperLabel>
@@ -498,44 +508,78 @@ export default function ProjectPage() {
           ))}
         </div>
 
-        {/* FC Share Links Panel — visible to project managers only */}
-        {meta?.type === 'project' && fcLinks.length > 0 && (
-          <Card style={{ padding: '16px 20px', marginBottom: 20 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-              <UpperLabel>{lang === 'en' ? 'Facilitator links' : 'Liens facilitateurs'}</UpperLabel>
-              <span style={{ fontSize: 11, color: C.muted }}>
-                {lang === 'en' ? 'Click to copy and share' : 'Cliquez pour copier et partager'}
-              </span>
+        {/* FC Cards — multi-select filter + copy link */}
+        {meta?.type === 'project' && facilitateurs.length > 0 && (
+          <div style={{ marginBottom: 20 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+              <UpperLabel>{lang === 'en' ? 'Field catalysts' : 'Facilitateurs'}</UpperLabel>
+              {selectedFCs.size > 0 && (
+                <button onClick={() => { setSelectedFCs(new Set()); setSelectedOSC(''); }}
+                  style={{ fontSize: 10, color: C.muted, background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', padding: 0, fontFamily: 'inherit' }}>
+                  {lang === 'en' ? 'Clear filter' : 'Tout afficher'}
+                </button>
+              )}
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 8 }}>
-              {fcLinks.map(fc => {
-                const isCopied = copiedFC === fc.name;
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 8 }}>
+              {facilitateurs.map(fc => {
+                const isSelected = selectedFCs.has(fc);
+                const fcLink = fcLinks.find(f => f.name === fc);
+                const isCopied = copiedFC === fc;
+                // Stats for this FC
+                const fcRecs = records.filter(r => safeStr(r.fields['Facilitateur']) === fc);
+                const fcOscs = [...new Set(fcRecs.map(r => safeStr(r.fields["Nom de l'OSC"])).filter(Boolean))];
+                const fcScores = fcOscs.map(name => {
+                  const recs = fcRecs.filter(r => safeStr(r.fields["Nom de l'OSC"]) === name);
+                  const latest = EVAL_ORDER.slice().reverse().find(e => recs.some(r => safeStr(r.fields["Type d'évaluation"]) === e));
+                  const latestRec = recs.find(r => safeStr(r.fields["Type d'évaluation"]) === latest);
+                  return safeNum(latestRec?.fields?.Score_Global);
+                }).filter(s => s !== null);
+                const avgScore = fcScores.length ? (fcScores.reduce((a,b) => a+b, 0) / fcScores.length).toFixed(1) : null;
+                const sc = avgScore ? (Number(avgScore) >= 7 ? C.green : Number(avgScore) >= 5 ? C.orange : C.red) : C.muted;
+
                 return (
-                  <button key={fc.name}
-                    onClick={() => {
-                      if (fc.url) {
-                        navigator.clipboard.writeText(fc.url);
-                        setCopiedFC(fc.name);
-                        setTimeout(() => setCopiedFC(null), 2000);
-                      }
-                    }}
-                    style={{
-                      padding: '8px 12px', borderRadius: 6, cursor: fc.url ? 'pointer' : 'default',
-                      border: `1px solid ${isCopied ? C.green : C.rule}`,
-                      background: isCopied ? '#F0FDF4' : C.white,
-                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                      gap: 8, fontFamily: 'inherit', transition: 'all 0.15s',
-                    }}
-                  >
-                    <span style={{ fontSize: 12, fontWeight: 500, color: C.ink, textAlign: 'left' }}>{fc.name}</span>
-                    <span style={{ fontSize: 10, fontWeight: 700, color: isCopied ? C.green : C.muted, flexShrink: 0 }}>
-                      {isCopied ? (lang === 'en' ? 'Copied!' : 'Copié !') : (lang === 'en' ? 'Copy link' : 'Copier')}
-                    </span>
-                  </button>
+                  <div key={fc} style={{
+                    borderRadius: 8, overflow: 'hidden',
+                    border: `1.5px solid ${isSelected ? C.navy : C.rule}`,
+                    background: isSelected ? '#F0F7FF' : C.white,
+                    transition: 'all 0.15s',
+                  }}>
+                    {/* Clickable card header */}
+                    <div onClick={() => {
+                        const next = new Set(selectedFCs);
+                        if (next.has(fc)) next.delete(fc); else next.add(fc);
+                        setSelectedFCs(next);
+                        setSelectedOSC('');
+                      }}
+                      style={{ padding: '12px 14px', cursor: 'pointer' }}
+                    >
+                      <div style={{ fontSize: 12, fontWeight: 700, color: C.ink, marginBottom: 6 }}>{fc}</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <span style={{ fontSize: 11, color: C.muted }}>{fcOscs.length} OSC</span>
+                        {avgScore && <span style={{ fontSize: 13, fontWeight: 700, color: sc }}>{avgScore}<span style={{ fontSize: 10, color: C.muted }}>/10</span></span>}
+                        <span style={{ marginLeft: 'auto', width: 16, height: 16, borderRadius: '50%', border: `2px solid ${isSelected ? C.navy : C.rule}`, background: isSelected ? C.navy : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          {isSelected && <span style={{ width: 6, height: 6, borderRadius: '50%', background: C.white }} />}
+                        </span>
+                      </div>
+                    </div>
+                    {/* Copy link button */}
+                    {fcLink?.url && (
+                      <div style={{ borderTop: `1px solid ${C.rule}`, padding: '6px 14px' }}>
+                        <button onClick={() => {
+                            navigator.clipboard.writeText(fcLink.url);
+                            setCopiedFC(fc);
+                            setTimeout(() => setCopiedFC(null), 2000);
+                          }}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 10, fontWeight: 700, color: isCopied ? C.green : C.blue, padding: 0, fontFamily: 'inherit', letterSpacing: 0.3 }}>
+                          {isCopied ? (lang === 'en' ? 'Copied!' : 'Copié !') : (lang === 'en' ? 'Copy facilitator link' : 'Copier le lien')}
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 );
               })}
             </div>
-          </Card>
+          </div>
         )}
 
         <div style={{ display: 'grid', gridTemplateColumns: selectedOSC ? '280px 1fr' : '1fr', gap: 20, alignItems: 'start' }}>
@@ -544,18 +588,7 @@ export default function ProjectPage() {
           <div>
             <Card style={{ overflow: 'hidden' }}>
               <div style={{ padding: '12px 14px', borderBottom: `1px solid ${C.rule}` }}>
-                {facilitateurs.length > 1 && meta?.type === 'project' && (
-                  <div style={{ marginBottom: 8 }}>
-                    <select
-                      value={filterFC}
-                      onChange={e => { setFilterFC(e.target.value); setSelectedOSC(''); }}
-                      style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: `1px solid ${C.rule}`, fontSize: 12, color: C.ink, marginBottom: 4, fontFamily: 'inherit', background: filterFC ? '#EFF6FF' : C.white }}
-                    >
-                      <option value="">{lang === 'en' ? 'All facilitators' : 'Tous les facilitateurs'}</option>
-                      {facilitateurs.map(fc => <option key={fc} value={fc}>{fc}</option>)}
-                    </select>
-                  </div>
-                )}
+
                 <input
                   value={search}
                   onChange={e => setSearch(e.target.value)}
@@ -592,7 +625,7 @@ export default function ProjectPage() {
             <div>
               <div style={{ marginBottom: 24 }}>
                 <UpperLabel style={{ display: 'block', marginBottom: 6 }}>
-                  {safeStr(oscRecords[0]?.fields?.Pays)}
+                  {displayCountry(safeStr(oscRecords[0]?.fields?.Pays), lang)}
                 </UpperLabel>
                 <h2 style={{ fontSize: 28, fontWeight: 900, color: C.ink, margin: 0, letterSpacing: -0.5 }}>{selectedOSC}</h2>
               </div>
