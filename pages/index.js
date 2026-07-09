@@ -435,6 +435,15 @@ export default function Home() {
         * { box-sizing: border-box; }
         button { font-family: inherit; }
         select { font-family: inherit; }
+        @media print {
+          nav, .no-print { display: none !important; }
+          body, html { background: #fff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          div[style*="minHeight"] { min-height: auto !important; background: #fff !important; }
+          .recharts-responsive-container { page-break-inside: avoid; }
+          table { page-break-inside: avoid; }
+          div[style*="gridTemplateColumns"] { display: flex !important; flex-wrap: wrap !important; gap: 12px !important; }
+          @page { size: A4 portrait; margin: 15mm 12mm; }
+        }
       `}</style>
 
       {/* Navbar */}
@@ -456,7 +465,7 @@ export default function Home() {
           </span>
         </div>
         {/* Language switcher */}
-        <div style={{ display: 'flex', gap: 2, background: 'rgba(255,255,255,0.1)', borderRadius: 20, padding: 3 }}>
+        <div className="no-print" style={{ display: 'flex', gap: 2, background: 'rgba(255,255,255,0.1)', borderRadius: 20, padding: 3 }}>
           {['fr', 'en'].map(l => (
             <button key={l} onClick={() => setLang(l)} style={{
               padding: '4px 14px', borderRadius: 16, border: 'none', cursor: 'pointer',
@@ -510,7 +519,17 @@ export default function Home() {
                 fontSize: 40, fontWeight: 900, color: C.ink,
                 margin: '0 0 16px', letterSpacing: -1, lineHeight: 1.08,
               }}>{selectedOSC}</h1>
-
+              <button
+                className="no-print"
+                onClick={() => window.print()}
+                style={{
+                  padding: '8px 20px', borderRadius: 6, border: `1px solid ${C.rule}`,
+                  background: C.white, color: C.navy, fontSize: 13, fontWeight: 600,
+                  cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 7,
+                }}
+              >
+                <span style={{ fontSize: 15 }}>⬇</span> {lang === 'en' ? 'Download PDF' : 'Télécharger PDF'}
+              </button>
             </div>
 
             {/* Score cards — also act as filter on click */}
@@ -553,7 +572,7 @@ export default function Home() {
 
             {/* Filter pills */}
             {allPresentEvals.length > 1 && (
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 32 }}>
+              <div className="no-print" style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 32 }}>
                 <UpperLabel style={{ marginRight: 4 }}>{t.show}</UpperLabel>
                 {[null, ...allPresentEvals].map((e, i) => {
                   const active = selectedEval === e;
