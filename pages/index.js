@@ -379,7 +379,6 @@ export default function Home() {
             }, 800);
           }
         })
-        })
         .catch(() => setLoading(false));
     }
   }, []);
