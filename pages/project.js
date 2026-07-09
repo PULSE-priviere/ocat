@@ -645,7 +645,19 @@ export default function ProjectPage() {
                 <UpperLabel style={{ display: 'block', marginBottom: 6 }}>
                   {displayCountry(safeStr(oscRecords[0]?.fields?.Pays), lang)}
                 </UpperLabel>
-                <h2 style={{ fontSize: 28, fontWeight: 900, color: C.ink, margin: 0, letterSpacing: -0.5 }}>{selectedOSC}</h2>
+                <h2 style={{ fontSize: 28, fontWeight: 900, color: C.ink, margin: '0 0 12px', letterSpacing: -0.5 }}>{selectedOSC}</h2>
+                  <button
+                    className="no-print"
+                    onClick={() => window.print()}
+                    style={{
+                      padding: '7px 16px', borderRadius: 6, border: `1px solid ${C.rule}`,
+                      background: C.white, color: C.navy, fontSize: 12, fontWeight: 600,
+                      cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6,
+                      fontFamily: 'inherit',
+                    }}
+                  >
+                    <span style={{ fontSize: 14 }}>⬇</span> {lang === 'en' ? 'Download PDF' : 'Télécharger PDF'}
+                  </button>
               </div>
               <OSCDetail oscName={selectedOSC} oscRecords={oscRecords} lang={lang} />
             </div>

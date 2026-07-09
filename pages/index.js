@@ -521,7 +521,11 @@ export default function Home() {
               }}>{selectedOSC}</h1>
               <button
                 className="no-print"
-                onClick={() => window.print()}
+                onClick={() => {
+                  const prev = openSection;
+                  setOpenSection('__all__');
+                  setTimeout(() => { window.print(); setOpenSection(prev); }, 400);
+                }}
                 style={{
                   padding: '8px 20px', borderRadius: 6, border: `1px solid ${C.rule}`,
                   background: C.white, color: C.navy, fontSize: 13, fontWeight: 600,
@@ -680,7 +684,7 @@ export default function Home() {
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 8, marginBottom: 24 }}>
               {Object.entries(secNames).map(([sec, secName]) => {
-                const isOpen = openSection === sec;
+                const isOpen = openSection === sec || openSection === '__all__';
                 const secQs = QUESTIONS.filter(q => q.sec === sec);
 
                 let appuiCount = 0;
