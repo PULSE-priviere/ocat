@@ -429,6 +429,13 @@ export default function Home() {
           div[style*="gridTemplateColumns"] { display: flex !important; flex-wrap: wrap !important; gap: 12px !important; }
           @page { size: A4 portrait; margin: 15mm 12mm; }
         }
+        @media (max-width: 640px) {
+          .radar-wrap .recharts-responsive-container { height: 280px !important; }
+          .main-padding { padding: 20px 16px 60px !important; }
+        }
+        @media (min-width: 641px) {
+          .main-padding { padding: 48px 40px 80px !important; }
+        }
       `}</style>
 
       {/* Navbar */}
@@ -465,7 +472,7 @@ export default function Home() {
         </div>
       </nav>
 
-      <div style={{ maxWidth: 1080, margin: '0 auto', padding: '48px 40px 80px' }}>
+      <div className="main-padding" style={{ maxWidth: 1080, margin: '0 auto', padding: '24px 16px 60px' }}>
 
         {/* Homepage sans ?id= : page neutre */}
         {!directId && !selectedOSC && !loading && (
@@ -503,8 +510,8 @@ export default function Home() {
                 {safeStr(records[0]?.fields?.Projet)} · {safeStr(records[0]?.fields?.Pays)}
               </UpperLabel>
               <h1 style={{
-                fontSize: 40, fontWeight: 900, color: C.ink,
-                margin: '0 0 16px', letterSpacing: -1, lineHeight: 1.08,
+                fontSize: 'clamp(28px, 4vw, 36px)', fontWeight: 900, color: C.ink,
+                margin: '0 0 16px', lineHeight: 1.08,
               }}>{selectedOSC}</h1>
               <button
                 className="no-print"
@@ -526,7 +533,7 @@ export default function Home() {
             {/* Score cards — also act as filter on click */}
             <div style={{
               display: 'grid',
-              gridTemplateColumns: `repeat(${allPresentEvals.length}, minmax(160px, 210px))`,
+              gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
               gap: 14, marginBottom: 32,
             }}>
               {allPresentEvals.map(evalType => {
@@ -586,6 +593,7 @@ export default function Home() {
             {/* Radar */}
             <Card style={{ padding: '28px 28px 16px', marginBottom: 14 }}>
               <UpperLabel style={{ display: 'block', marginBottom: 22 }}>{t.scoresSection}</UpperLabel>
+              <div className="radar-wrap">
               <ResponsiveContainer width="100%" height={370}>
                 <RadarChart cx="50%" cy="50%" outerRadius="72%" data={radarData}>
                   <PolarGrid stroke={C.rule} />
@@ -603,10 +611,11 @@ export default function Home() {
                   <Legend wrapperStyle={{ paddingTop: 16, fontSize: 12 }} />
                 </RadarChart>
               </ResponsiveContainer>
+              </div>
             </Card>
 
             {/* Scores table — after radar */}
-            <Card style={{ padding: '20px 24px', marginBottom: 14 }}>
+            <Card style={{ padding: '20px 24px', marginBottom: 14, overflowX: 'auto' }}>
               <UpperLabel style={{ display: 'block', marginBottom: 16 }}>
                 {lang === 'en' ? 'Scores by section' : 'Scores par section'}
               </UpperLabel>
@@ -669,7 +678,7 @@ export default function Home() {
               <span style={{ fontSize: 12, color: C.muted }}>{t.clickToExpand}</span>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 8, marginBottom: 24 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 8, marginBottom: 24 }}>
               {Object.entries(secNames).map(([sec, secName]) => {
                 const isOpen = openSection === sec || openSection === '__all__';
                 const secQs = QUESTIONS.filter(q => q.sec === sec);
@@ -693,7 +702,7 @@ export default function Home() {
                       transition: 'border-color 0.15s',
                     }}
                   >
-                    <div style={{ padding: '16px 20px', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+                    <div style={{ padding: '16px', minHeight: 48, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
                       <div style={{ flex: 1 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
                           <span style={{ background: '#EFF6FF', color: C.blue, fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 4, letterSpacing: 0.5 }}>
@@ -733,7 +742,7 @@ export default function Home() {
 
                     {isOpen && (
                       <div
-                        style={{ padding: '0 20px 24px', borderTop: `1px solid ${C.rule}` }}
+                        style={{ padding: '0 16px 24px', borderTop: `1px solid ${C.rule}` }}
                         onClick={e => e.stopPropagation()}
                       >
                         <SectionDetail
