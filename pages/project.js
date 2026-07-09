@@ -417,6 +417,8 @@ export default function ProjectPage() {
   const [selectedFCs, setSelectedFCs] = useState(new Set()); // multi-select
   const [search, setSearch] = useState('');
   const [lang, setLang] = useState('fr');
+  const [deleteTarget, setDeleteTarget] = useState(null); // { id, name }
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -439,6 +441,26 @@ export default function ProjectPage() {
       })
     .catch(() => { setError('load_error'); setLoading(false); });
   }, []);
+
+  async function handleDelete() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    const params = new URLSearchParams(window.location.search);
+    try {
+      const resp = await fetch(`/api/records?key=${params.get('key')}&deleteId=${deleteTarget.id}`, { method: 'DELETE' });
+      const data = await resp.json();
+      if (data.deleted) {
+        setRecords(prev => prev.filter(r => r.id !== deleteTarget.id));
+        if (selectedOSC) {
+          // Si plus aucun record pour cette OSC, désélectionner
+          const remaining = records.filter(r => r.id !== deleteTarget.id && safeStr(r.fields["Nom de l'OSC"]) === selectedOSC);
+          if (!remaining.length) setSelectedOSC('');
+        }
+      }
+    } catch (e) { console.error(e); }
+    setDeleting(false);
+    setDeleteTarget(null);
+  }
 
   const oscNames = [...new Set(records.map(r => safeStr(r.fields["Nom de l'OSC"])).filter(Boolean))].sort();
   const facilitateurs = meta?.type === 'project'
@@ -474,6 +496,35 @@ export default function ProjectPage() {
   return (
     <div style={{ fontFamily: "'Inter', -apple-system, sans-serif", background: C.bg, minHeight: '100vh' }}>
       <style>{`@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap'); * { box-sizing: border-box; } button { font-family: inherit; }`}</style>
+     
+      {/* Delete confirmation modal */}
+      {deleteTarget && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 999, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          onClick={() => !deleting && setDeleteTarget(null)}>
+          <div onClick={e => e.stopPropagation()} style={{ background: C.white, borderRadius: 12, padding: '28px 32px', maxWidth: 400, width: '90%', boxShadow: '0 8px 30px rgba(0,0,0,0.2)' }}>
+            <div style={{ fontSize: 16, fontWeight: 700, color: C.ink, marginBottom: 12 }}>
+              {lang === 'en' ? 'Delete this assessment?' : 'Supprimer cette évaluation ?'}
+            </div>
+            <p style={{ fontSize: 13, color: C.mid, lineHeight: 1.6, margin: '0 0 20px' }}>
+              {lang === 'en'
+                ? `You are about to permanently delete the assessment for "${deleteTarget.name}". This action is irreversible.`
+                : `Vous êtes sur le point de supprimer définitivement l'évaluation de « ${deleteTarget.name} ». Cette action est irréversible.`}
+            </p>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <button onClick={() => setDeleteTarget(null)} disabled={deleting}
+                style={{ padding: '8px 18px', borderRadius: 6, border: `1px solid ${C.rule}`, background: C.white, color: C.ink, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                {lang === 'en' ? 'Cancel' : 'Annuler'}
+              </button>
+              <button onClick={handleDelete} disabled={deleting}
+                style={{ padding: '8px 18px', borderRadius: 6, border: 'none', background: C.red, color: C.white, fontSize: 13, fontWeight: 700, cursor: deleting ? 'wait' : 'pointer', fontFamily: 'inherit', opacity: deleting ? 0.6 : 1 }}>
+                {deleting
+                  ? (lang === 'en' ? 'Deleting…' : 'Suppression…')
+                  : (lang === 'en' ? 'Delete permanently' : 'Supprimer définitivement')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Navbar */}
       <nav style={{ background: C.navy, height: 68, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 48px', position: 'sticky', top: 0, zIndex: 100, boxShadow: '0 2px 16px rgba(0,0,0,0.18)' }}>
@@ -648,22 +699,38 @@ export default function ProjectPage() {
                   {displayCountry(safeStr(oscRecords[0]?.fields?.Pays), lang)}
                 </UpperLabel>
                 <h2 style={{ fontSize: 28, fontWeight: 900, color: C.ink, margin: '0 0 12px', letterSpacing: -0.5 }}>{selectedOSC}</h2>
-                  <button
-                    className="no-print"
-                    onClick={() => {
-                      const rec = oscRecords[0];
-                      const recId = rec?.id;
-                      if (recId) window.open(`/?id=${recId}&print=1`, '_blank');
-                    }}
-                    style={{
-                      padding: '7px 16px', borderRadius: 6, border: `1px solid ${C.rule}`,
-                      background: C.white, color: C.navy, fontSize: 12, fontWeight: 600,
-                      cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6,
-                      fontFamily: 'inherit',
-                    }}
-                  >
-                    <span style={{ fontSize: 14 }}>⬇</span> {lang === 'en' ? 'Download PDF' : 'Télécharger PDF'}
-                  </button>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    <button
+                      className="no-print"
+                      onClick={() => {
+                        const rec = oscRecords[0];
+                        const recId = rec?.id;
+                        if (recId) window.open(`/?id=${recId}&print=1`, '_blank');
+                      }}
+                      style={{
+                        padding: '7px 16px', borderRadius: 6, border: `1px solid ${C.rule}`,
+                        background: C.white, color: C.navy, fontSize: 12, fontWeight: 600,
+                        cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6,
+                        fontFamily: 'inherit',
+                      }}
+                    >
+                      <span style={{ fontSize: 14 }}>⬇</span> {lang === 'en' ? 'Download PDF' : 'Télécharger PDF'}
+                    </button>
+                    {oscRecords.map(rec => (
+                      <button key={rec.id}
+                        className="no-print"
+                        onClick={() => setDeleteTarget({ id: rec.id, name: `${selectedOSC} — ${EVAL_SHORT[safeStr(rec.fields["Type d'évaluation"])] || '?'}` })}
+                        style={{
+                          padding: '7px 12px', borderRadius: 6, border: `1px solid #FECACA`,
+                          background: '#FEF2F2', color: C.red, fontSize: 12, fontWeight: 600,
+                          cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 5,
+                          fontFamily: 'inherit',
+                        }}
+                      >
+                        <span style={{ fontSize: 13 }}>🗑</span> {EVAL_SHORT[safeStr(rec.fields["Type d'évaluation"])] || (lang === 'en' ? 'Delete' : 'Supprimer')}
+                      </button>
+                    ))}
+                  </div>
               </div>
               <OSCDetail oscName={selectedOSC} oscRecords={oscRecords} lang={lang} />
             </div>

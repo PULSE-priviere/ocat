@@ -6,6 +6,58 @@ export default async function handler(req, res) {
 
   if (!TOKEN) return res.status(500).json({ error: 'Token non configuré' });
 
+  // ── DELETE — suppression d'un record ─────────────────────────────────────────
+  if (req.method === 'DELETE') {
+    const { key: delKey, deleteId } = req.query;
+    if (!delKey || !deleteId) return res.status(400).json({ error: 'key et deleteId requis' });
+
+    const PROJECT_TOKENS = {
+      [process.env.TOKEN_SAMIM2]:   { type: 'project', projet: 'SAMIM2' },
+      [process.env.TOKEN_EUREACH]:  { type: 'project', projet: 'EU REACH CSO' },
+    };
+    const FC_TOKENS = {
+      [process.env.TOKEN_FC_AVILLAGE]:   { name: 'A village at a time',    projet: 'EU REACH CSO' },
+      [process.env.TOKEN_FC_AGRIPREMIUM]:{ name: 'Agripremium',            projet: 'EU REACH CSO' },
+      [process.env.TOKEN_FC_ANGELS]:     { name: 'Angels Resources Centre', projet: 'EU REACH CSO' },
+      [process.env.TOKEN_FC_ESISIPHO]:   { name: 'Esisipho K',             projet: 'EU REACH CSO' },
+      [process.env.TOKEN_FC_LUHNYEZI]:   { name: 'Luhnyezi',               projet: 'EU REACH CSO' },
+      [process.env.TOKEN_FC_POWEROFWELL]:{ name: 'Power of Well',          projet: 'EU REACH CSO' },
+      [process.env.TOKEN_FC_SOTHABA]:    { name: 'Sothaba',                projet: 'EU REACH CSO' },
+      [process.env.TOKEN_FC_UNNATI]:     { name: 'Unnati',                 projet: 'EU REACH CSO' },
+    };
+
+    const projMatch = PROJECT_TOKENS[delKey];
+    const fcMatch = FC_TOKENS[delKey];
+    if (!projMatch && !fcMatch) return res.status(403).json({ error: 'Accès refusé' });
+
+    // Vérifier que le record appartient au périmètre
+    const checkUrl = `https://api.airtable.com/v0/${BASE_ID}/${TABLE_ID}/${deleteId}`;
+    const checkResp = await fetch(checkUrl, { headers: { Authorization: `Bearer ${TOKEN}` } });
+    if (!checkResp.ok) return res.status(404).json({ error: 'Record introuvable' });
+    const rec = await checkResp.json();
+    const recProjet = rec.fields?.Projet || '';
+    const recFC = rec.fields?.Facilitateur || '';
+
+    if (projMatch && recProjet !== projMatch.projet) {
+      return res.status(403).json({ error: 'Record hors périmètre projet' });
+    }
+    if (fcMatch && (recProjet !== fcMatch.projet || recFC !== fcMatch.name)) {
+      return res.status(403).json({ error: 'Record hors périmètre facilitateur' });
+    }
+
+    // Suppression effective
+    const delResp = await fetch(checkUrl, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${TOKEN}` },
+    });
+    if (!delResp.ok) {
+      const err = await delResp.json();
+      return res.status(500).json({ error: 'Échec suppression', detail: err });
+    }
+    return res.status(200).json({ deleted: true, id: deleteId });
+  }
+
+
   // ── Mode OSC individuelle — accès par record ID ─────────────────────────────
   if (id) {
     const url = `https://api.airtable.com/v0/${BASE_ID}/${TABLE_ID}?filterByFormula=${encodeURIComponent(`RECORD_ID()="${id}"`)}`;
