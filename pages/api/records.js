@@ -7,53 +7,59 @@ export default async function handler(req, res) {
 
   // ── DELETE — suppression d'un record (AVANT tout autre traitement) ──────────
   if (req.method === 'DELETE') {
-    const { key, deleteId } = req.query;
-    if (!key || !deleteId) return res.status(400).json({ error: 'key et deleteId requis' });
+      try {
+        const { key, deleteId } = req.query;
+        if (!key || !deleteId) return res.status(400).json({ error: 'key et deleteId requis' });
 
-    const PROJECT_TOKENS = {
-      [process.env.TOKEN_SAMIM2]:   { type: 'project', projet: 'SAMIM2' },
-      [process.env.TOKEN_EUREACH]:  { type: 'project', projet: 'EU REACH CSO' },
-    };
-    const FC_TOKENS = {
-      [process.env.TOKEN_FC_AVILLAGE]:   { name: 'A village at a time',    projet: 'EU REACH CSO' },
-      [process.env.TOKEN_FC_AGRIPREMIUM]:{ name: 'Agripremium',            projet: 'EU REACH CSO' },
-      [process.env.TOKEN_FC_ANGELS]:     { name: 'Angels Resources Centre', projet: 'EU REACH CSO' },
-      [process.env.TOKEN_FC_ESISIPHO]:   { name: 'Esisipho K',             projet: 'EU REACH CSO' },
-      [process.env.TOKEN_FC_LUHNYEZI]:   { name: 'Luhnyezi',               projet: 'EU REACH CSO' },
-      [process.env.TOKEN_FC_POWEROFWELL]:{ name: 'Power of Well',          projet: 'EU REACH CSO' },
-      [process.env.TOKEN_FC_SOTHABA]:    { name: 'Sothaba',                projet: 'EU REACH CSO' },
-      [process.env.TOKEN_FC_UNNATI]:     { name: 'Unnati',                 projet: 'EU REACH CSO' },
-    };
+        const PROJECT_TOKENS = {
+          [process.env.TOKEN_SAMIM2]:   { type: 'project', projet: 'SAMIM2' },
+          [process.env.TOKEN_EUREACH]:  { type: 'project', projet: 'EU REACH CSO' },
+        };
+        const FC_TOKENS = {
+          [process.env.TOKEN_FC_AVILLAGE]:   { name: 'A village at a time',    projet: 'EU REACH CSO' },
+          [process.env.TOKEN_FC_AGRIPREMIUM]:{ name: 'Agripremium',            projet: 'EU REACH CSO' },
+          [process.env.TOKEN_FC_ANGELS]:     { name: 'Angels Resources Centre', projet: 'EU REACH CSO' },
+          [process.env.TOKEN_FC_ESISIPHO]:   { name: 'Esisipho K',             projet: 'EU REACH CSO' },
+          [process.env.TOKEN_FC_LUHNYEZI]:   { name: 'Luhnyezi',               projet: 'EU REACH CSO' },
+          [process.env.TOKEN_FC_POWEROFWELL]:{ name: 'Power of Well',          projet: 'EU REACH CSO' },
+          [process.env.TOKEN_FC_SOTHABA]:    { name: 'Sothaba',                projet: 'EU REACH CSO' },
+          [process.env.TOKEN_FC_UNNATI]:     { name: 'Unnati',                 projet: 'EU REACH CSO' },
+        };
 
-    const projMatch = PROJECT_TOKENS[key];
-    const fcMatch = FC_TOKENS[key];
-    if (!projMatch && !fcMatch) return res.status(403).json({ error: 'Accès refusé' });
+        const projMatch = PROJECT_TOKENS[key];
+        const fcMatch = FC_TOKENS[key];
+        if (!projMatch && !fcMatch) return res.status(403).json({ error: 'Accès refusé' });
 
-    // Vérifier que le record existe et appartient au périmètre
-    const recUrl = `https://api.airtable.com/v0/${BASE_ID}/${TABLE_ID}/${deleteId}`;
-    const checkResp = await fetch(recUrl, { headers: { Authorization: `Bearer ${TOKEN}` } });
-    if (!checkResp.ok) return res.status(404).json({ error: 'Record introuvable' });
-    const rec = await checkResp.json();
-    const recProjet = rec.fields?.Projet || '';
-    const recFC = rec.fields?.Facilitateur || '';
+        // Step 1 — vérifier le record
+        const recUrl = `https://api.airtable.com/v0/${BASE_ID}/${TABLE_ID}/${deleteId}`;
+        const checkResp = await fetch(recUrl, { headers: { Authorization: `Bearer ${TOKEN}` } });
+        const checkBody = await checkResp.json();
+        if (!checkResp.ok) return res.status(404).json({ error: 'Record introuvable', detail: checkBody });
 
-    if (projMatch && recProjet !== projMatch.projet) {
-      return res.status(403).json({ error: 'Record hors périmètre projet' });
+        const recProjet = checkBody.fields?.Projet || '';
+        const recFC = checkBody.fields?.Facilitateur || '';
+
+        if (projMatch && recProjet !== projMatch.projet) {
+          return res.status(403).json({ error: 'Hors périmètre projet' });
+        }
+        if (fcMatch && (recProjet !== fcMatch.projet || recFC !== fcMatch.name)) {
+          return res.status(403).json({ error: 'Hors périmètre facilitateur' });
+        }
+
+        // Step 2 — supprimer
+        const delResp = await fetch(recUrl, {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${TOKEN}` },
+        });
+        const delBody = await delResp.json();
+        if (!delResp.ok) return res.status(500).json({ error: 'Échec Airtable', detail: delBody });
+
+        return res.status(200).json({ deleted: true, id: deleteId });
+
+      } catch (err) {
+        return res.status(500).json({ error: 'Exception serveur', message: err.message });
+      }
     }
-    if (fcMatch && (recProjet !== fcMatch.projet || recFC !== fcMatch.name)) {
-      return res.status(403).json({ error: 'Record hors périmètre facilitateur' });
-    }
-
-    const delResp = await fetch(recUrl, {
-      method: 'DELETE',
-      headers: { Authorization: `Bearer ${TOKEN}` },
-    });
-    if (!delResp.ok) {
-      const err = await delResp.json();
-      return res.status(500).json({ error: 'Échec suppression', detail: err });
-    }
-    return res.status(200).json({ deleted: true, id: deleteId });
-  }
 
   // ── GET — le reste inchangé ────────────────────────────────────────────────
   const { id, key } = req.query;
