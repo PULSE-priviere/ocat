@@ -628,131 +628,111 @@ export default function ProjectPage() {
           </div>
         )}
 
-        <div style={{ display: 'grid', gridTemplateColumns: selectedOSC ? '280px 1fr' : '1fr', gap: 20, alignItems: 'start' }}>
-
-          {/* Left panel — OSC list */}
-          <div>
-            <Card style={{ overflow: 'hidden' }}>
-              <div style={{ padding: '12px 14px', borderBottom: `1px solid ${C.rule}` }}>
-
-                <input
-                  value={search}
-                  onChange={e => setSearch(e.target.value)}
-                  placeholder={lang === 'en' ? 'Search an organisation...' : 'Rechercher une organisation...'}
-                  style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: `1px solid ${C.rule}`, fontSize: 13, color: C.ink, outline: 'none', fontFamily: 'inherit' }}
-                />
-              </div>
-              <div style={{ maxHeight: selectedOSC ? '70vh' : undefined, overflowY: selectedOSC ? 'auto' : undefined }}>
-                {filteredOSCs.map(name => {
-                  const stat = stats.find(s => s.name === name);
-                  const sc = stat?.score !== null ? (stat.score >= 7 ? C.green : stat.score >= 5 ? C.orange : C.red) : C.muted;
-                  const isSelected = selectedOSC === name;
-                  return (
-                    <div key={name}
-                      onClick={() => setSelectedOSC(isSelected ? '' : name)}
-                      style={{ padding: '12px 14px', cursor: 'pointer', background: isSelected ? '#EFF6FF' : 'transparent', borderBottom: `1px solid ${C.rule}`, borderLeft: isSelected ? `3px solid ${C.blue}` : '3px solid transparent', transition: 'all 0.1s' }}
-                    >
-                      <div style={{ fontSize: 13, fontWeight: isSelected ? 700 : 500, color: C.ink, marginBottom: 3 }}>{name}</div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span style={{ fontSize: 14, fontWeight: 700, color: sc }}>{stat?.score !== null ? stat.score.toFixed(1) : '—'}</span>
-                        <span style={{ fontSize: 10, color: C.muted, marginLeft: 'auto' }}>{stat?.evalCount} {lang === 'en' ? 'assess.' : 'éval.'}</span>
-                        <span style={{ fontSize: 10, color: C.muted, marginLeft: 'auto' }}>{stat?.evalCount} éval.</span>
-                        {stat?.recId && (
-                          <button
-                            onClick={e => {
-                              e.stopPropagation();
-                              const url = `${window.location.origin}/?id=${stat.recId}`;
-                              navigator.clipboard.writeText(url);
-                              setCopiedOSCLink(stat.recId);
-                              setTimeout(() => setCopiedOSCLink(null), 2000);
-                            }}
-                            title={lang === 'en' ? 'Copy OSC link' : "Copier le lien de l'OSC"}
-                            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px', fontSize: 13, color: copiedOSCLink === stat.recId ? C.green : C.blue, fontFamily: 'inherit', lineHeight: 1 }}
-                          >
-                            {copiedOSCLink === stat.recId
-                              ? (lang === 'en' ? 'Link copied ✓' : 'Lien copié ✓')
-                              : (lang === 'en' ? 'Copy CSO link 🔗' : "Copier le lien OSC 🔗")}                          </button>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-                {filteredOSCs.length === 0 && <div style={{ padding: 20, textAlign: 'center', color: C.muted, fontSize: 13 }}>{lang === 'en' ? 'No results' : 'Aucun résultat'}</div>}
-              </div>
-            </Card>
-          </div>
-
-          {/* Right panel — OSC detail */}
-          {selectedOSC && oscRecords.length > 0 && (
-            <div>
-              <div style={{ marginBottom: 24 }}>
-                <UpperLabel style={{ display: 'block', marginBottom: 6 }}>
-                  {displayCountry(safeStr(oscRecords[0]?.fields?.Pays), lang)}
-                </UpperLabel>
-                <h2 style={{ fontSize: 28, fontWeight: 900, color: C.ink, margin: '0 0 12px', letterSpacing: -0.5 }}>{selectedOSC}</h2>
-                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                    <button
-                      className="no-print"
-                      onClick={() => {
-                        const rec = oscRecords[0];
-                        const recId = rec?.id;
-                        if (recId) window.open(`/?id=${recId}&print=1`, '_blank');
-                      }}
-                      style={{
-                        padding: '7px 16px', borderRadius: 6, border: `1px solid ${C.rule}`,
-                        background: C.white, color: C.navy, fontSize: 12, fontWeight: 600,
-                        cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6,
-                        fontFamily: 'inherit',
-                      }}
-                    >
-                      <span style={{ fontSize: 14 }}>⬇</span> {lang === 'en' ? 'Download PDF' : 'Télécharger PDF'}
-                    </button>
-                    {oscRecords.map(rec => (
-                      <button key={rec.id}
-                        className="no-print"
-                        onClick={() => setDeleteTarget({ id: rec.id, name: `${selectedOSC} — ${EVAL_SHORT[safeStr(rec.fields["Type d'évaluation"])] || '?'}` })}
-                        style={{
-                          padding: '7px 12px', borderRadius: 6, border: `1px solid #FECACA`,
-                          background: '#FEF2F2', color: C.red, fontSize: 12, fontWeight: 600,
-                          cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 5,
-                          fontFamily: 'inherit',
-                        }}
-                      >
-                        <span style={{ fontSize: 13 }}>🗑</span> {EVAL_SHORT[safeStr(rec.fields["Type d'évaluation"])] || (lang === 'en' ? 'Delete' : 'Supprimer')}
-                      </button>
-                    ))}
-                  </div>
-              </div>
-              <OSCDetail oscName={selectedOSC} oscRecords={oscRecords} lang={lang} />
-            </div>
-          )}
-
-          {/* No OSC selected — show all as grid */}
-          {!selectedOSC && (
-            <div style={{ gridColumn: '1 / -1' }}>
-              <UpperLabel style={{ display: 'block', marginBottom: 14 }}>
-                {lang === 'en' ? 'All organisations' : 'Toutes les organisations'}
-              </UpperLabel>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 10 }}>
-                {stats.map(s => {
-                  const sc = s.score !== null ? (s.score >= 7 ? C.green : s.score >= 5 ? C.orange : C.red) : C.muted;
-                  return (
-                    <Card key={s.name}
-                      onClick={() => setSelectedOSC(s.name)}
-                      style={{ padding: '14px 16px', cursor: 'pointer' }}
-                    >
-                      <div style={{ fontSize: 13, fontWeight: 600, color: C.ink, marginBottom: 6 }}>{s.name}</div>
-                      <div style={{ fontSize: 24, fontWeight: 800, color: sc, lineHeight: 1, marginBottom: 4 }}>
-                        {s.score !== null ? s.score.toFixed(1) : '—'}<span style={{ fontSize: 11, fontWeight: 400, color: C.muted }}> / 10</span>
-                      </div>
-                      <div style={{ fontSize: 11, color: C.muted }}>{s.latest ? EVAL_SHORT[s.latest] : (lang === 'en' ? 'No assessment' : 'Aucune évaluation')}</div>
-                    </Card>
-                  );
-                })}
-              </div>
-            </div>
-          )}
+        {/* Search bar */}
+        <div style={{ marginBottom: 16 }}>
+          <input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder={lang === 'en' ? 'Search an organisation...' : 'Rechercher une organisation...'}
+            style={{ width: '100%', maxWidth: 400, padding: '9px 14px', borderRadius: 8, border: `1px solid ${C.rule}`, fontSize: 13, color: C.ink, outline: 'none', fontFamily: 'inherit', background: C.white }}
+          />
         </div>
+
+        {/* OSC detail view (selected) */}
+        {selectedOSC && oscRecords.length > 0 ? (
+          <div style={{ maxWidth: 1080 }}>
+            {/* Back button */}
+            <button
+              onClick={() => setSelectedOSC('')}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 14px', borderRadius: 6, border: `1px solid ${C.rule}`, background: C.white, color: C.mid, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', marginBottom: 20 }}
+            >
+              ← {lang === 'en' ? 'Back to list' : 'Retour à la liste'}
+            </button>
+
+            <div style={{ marginBottom: 24 }}>
+              <UpperLabel style={{ display: 'block', marginBottom: 6 }}>
+                {displayCountry(safeStr(oscRecords[0]?.fields?.Pays), lang)}
+              </UpperLabel>
+              <h2 style={{ fontSize: 28, fontWeight: 900, color: C.ink, margin: '0 0 12px', letterSpacing: -0.5 }}>{selectedOSC}</h2>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <button
+                  className="no-print"
+                  onClick={() => {
+                    const rec = oscRecords[0];
+                    const recId = rec?.id;
+                    if (recId) window.open(`/?id=${recId}&print=1`, '_blank');
+                  }}
+                  style={{
+                    padding: '7px 16px', borderRadius: 6, border: `1px solid ${C.rule}`,
+                    background: C.white, color: C.navy, fontSize: 12, fontWeight: 600,
+                    cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6,
+                    fontFamily: 'inherit',
+                  }}
+                >
+                  <span style={{ fontSize: 14 }}>⬇</span> {lang === 'en' ? 'Download PDF' : 'Télécharger PDF'}
+                </button>
+                {oscRecords.map(rec => (
+                  <button key={rec.id}
+                    className="no-print"
+                    onClick={() => setDeleteTarget({ id: rec.id, name: `${selectedOSC} — ${EVAL_SHORT[safeStr(rec.fields["Type d'évaluation"])] || '?'}` })}
+                    style={{
+                      padding: '7px 12px', borderRadius: 6, border: `1px solid #FECACA`,
+                      background: '#FEF2F2', color: C.red, fontSize: 12, fontWeight: 600,
+                      cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 5,
+                      fontFamily: 'inherit',
+                    }}
+                  >
+                    <span style={{ fontSize: 13 }}>🗑</span> {EVAL_SHORT[safeStr(rec.fields["Type d'évaluation"])] || (lang === 'en' ? 'Delete' : 'Supprimer')}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <OSCDetail oscName={selectedOSC} oscRecords={oscRecords} lang={lang} />
+          </div>
+        ) : (
+          /* OSC card grid */
+          <div>
+            <UpperLabel style={{ display: 'block', marginBottom: 14 }}>
+              {lang === 'en' ? 'All organisations' : 'Toutes les organisations'}
+              <span style={{ fontWeight: 400, letterSpacing: 0, textTransform: 'none', marginLeft: 8, color: C.muted }}>{filteredOSCs.length}</span>
+            </UpperLabel>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 10 }}>
+              {stats.filter(s => filteredOSCs.includes(s.name)).map(s => {
+                const sc = s.score !== null ? (s.score >= 7 ? C.green : s.score >= 5 ? C.orange : C.red) : C.muted;
+                return (
+                  <Card key={s.name}
+                    onClick={() => setSelectedOSC(s.name)}
+                    style={{ padding: '14px 16px', cursor: 'pointer', border: `1px solid ${C.rule}`, transition: 'border-color 0.15s' }}
+                  >
+                    <div style={{ fontSize: 13, fontWeight: 600, color: C.ink, marginBottom: 6 }}>{s.name}</div>
+                    <div style={{ fontSize: 24, fontWeight: 800, color: sc, lineHeight: 1, marginBottom: 4 }}>
+                      {s.score !== null ? s.score.toFixed(1) : '—'}<span style={{ fontSize: 11, fontWeight: 400, color: C.muted }}> / 10</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span style={{ fontSize: 11, color: C.muted }}>{s.latest ? EVAL_SHORT[s.latest] : (lang === 'en' ? 'No assessment' : 'Aucune évaluation')}</span>
+                      {s.recId && (
+                        <button
+                          onClick={e => {
+                            e.stopPropagation();
+                            const url = `${window.location.origin}/?id=${s.recId}`;
+                            navigator.clipboard.writeText(url);
+                            setCopiedOSCLink(s.recId);
+                            setTimeout(() => setCopiedOSCLink(null), 2000);
+                          }}
+                          title={lang === 'en' ? 'Copy OSC link' : "Copier le lien de l'OSC"}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px', fontSize: 11, color: copiedOSCLink === s.recId ? C.green : C.blue, fontFamily: 'inherit', lineHeight: 1 }}
+                        >
+                          {copiedOSCLink === s.recId ? '✓' : '🔗'}
+                        </button>
+                      )}
+                    </div>
+                  </Card>
+                );
+              })}
+            </div>
+            {filteredOSCs.length === 0 && <div style={{ padding: 40, textAlign: 'center', color: C.muted, fontSize: 13 }}>{lang === 'en' ? 'No results' : 'Aucun résultat'}</div>}
+          </div>
+        )}
       </div>
     </div>
   );
