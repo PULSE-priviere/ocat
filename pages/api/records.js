@@ -55,7 +55,7 @@ export default async function handler(req, res) {
         },
         body: JSON.stringify({
           fields: {
-            Statut_Record: 'Supprimé',
+            Statut_Record: 'deleted',
             Supprime_par: fcMatch ? fcMatch.name : `Chef de projet (${projMatch.projet})`,
             Supprime_le: new Date().toISOString().slice(0, 10),
           },
