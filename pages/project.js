@@ -7,6 +7,7 @@ import {
   SEC_NAMES, SEC_NAMES_EN, SCORE_FIELDS, QUESTIONS,
   EVAL_ORDER, EVAL_COLORS, EVAL_SHORT, FC_LIST
 } from '../config';
+import { C, SCORE_STYLE, CARD, FONT_WEIGHT } from '../theme';
 
 // ── Safe extractors ───────────────────────────────────────────────────────────
 function safeNum(v) {
@@ -24,23 +25,6 @@ function getScoreNum(v) {
   if (s.startsWith('3')) return 3;
   return null;
 }
-
-const C = {
-  navy: '#1B3A5C', ink: '#0F172A', mid: '#475569', muted: '#94A3B8',
-  rule: '#E2E8F0', bg: '#F1F5F9', white: '#FFFFFF',
-  red: '#DC2626', orange: '#D97706', green: '#16A34A', blue: '#2563EB',
-};
-
-const SCORE_LABELS = {
-  fr: { 1: 'Non mis en place', 2: 'Partiellement mis en place', 3: 'Documenté et opérationnel', 99: 'Non répondu / Non applicable' },
-  en: { 1: 'Not in place', 2: 'Partially in place', 3: 'Documented and operational', 99: 'Not answered / Not applicable' },
-};
-const SCORE_STYLE = {
-  1:  { color: C.red,    bg: '#FEF2F2', border: '#FECACA' },
-  2:  { color: C.orange, bg: '#FFFBEB', border: '#FDE68A' },
-  3:  { color: C.green,  bg: '#F0FDF4', border: '#BBF7D0' },
-  99: { color: C.muted,  bg: C.bg,      border: C.rule    },
-};
 
 const EVAL_KEY = {
   "Baseline (début d'accompagnement)": 'baseline',
