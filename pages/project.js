@@ -682,7 +682,7 @@ export default function ProjectPage() {
                       fontFamily: 'inherit',
                     }}
                   >
-                    <span style={{ fontSize: 13 }}>🗑</span> {EVAL_SHORT[safeStr(rec.fields["Type d'évaluation"])] || (lang === 'en' ? 'Delete' : 'Supprimer')}
+                    <span style={{ fontSize: 13 }}>Delete 🗑</span> {EVAL_SHORT[safeStr(rec.fields["Type d'évaluation"])] || (lang === 'en' ? 'Delete' : 'Supprimer')}
                   </button>
                 ))}
               </div>
