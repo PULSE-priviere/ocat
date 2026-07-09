@@ -511,20 +511,22 @@ export default function ProjectPage() {
       )}
 
       {/* Navbar */}
-      <nav style={{ background: C.navy, height: 68, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 48px', position: 'sticky', top: 0, zIndex: 100, boxShadow: '0 2px 16px rgba(0,0,0,0.18)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
-          <img src="https://images.fillout.com/orgid-732662/flowpublicid-p3BgAaYgGLus/widgetid-mMJS/kXtZ75Zg8QSTBDfjg3Vcwb/PULSE_LOGO_COULEUR.svg?a=rtAAwtQK1rtQfYt7rqMdQS" style={{ height: 38, filter: 'brightness(0) invert(1)' }} alt="PULSE" />
-          <div style={{ width: 1, height: 30, background: 'rgba(255,255,255,0.2)' }} />
-          <span style={{ fontSize: 16, fontWeight: 700, color: 'rgba(255,255,255,0.95)' }}>
-            {meta?.type === 'fc'
-              ? `${meta.facilitateur}`
-              : `${lang === 'en' ? 'Project Dashboard' : 'Dashboard projet'} — ${projet}`}
-          </span>
-        </div>
-        <div style={{ display: 'flex', gap: 2, background: 'rgba(255,255,255,0.1)', borderRadius: 20, padding: 3 }}>
-          {['fr', 'en'].map(l => (
-            <button key={l} onClick={() => setLang(l)} style={{ padding: '4px 14px', borderRadius: 16, border: 'none', cursor: 'pointer', background: lang === l ? C.white : 'transparent', color: lang === l ? C.navy : 'rgba(255,255,255,0.7)', fontSize: 12, fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase', transition: 'all 0.15s' }}>{l}</button>
-          ))}
+      <nav style={{ background: 'rgba(255,255,255,0.8)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', height: 56, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 24px', position: 'sticky', top: 0, zIndex: 100, borderBottom: `1px solid ${C.rule}` }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', maxWidth: 1200 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
+            <img src="https://images.fillout.com/orgid-732662/flowpublicid-p3BgAaYgGLus/widgetid-mMJS/kXtZ75Zg8QSTBDfjg3Vcwb/PULSE_LOGO_COULEUR.svg?a=rtAAwtQK1rtQfYt7rqMdQS" style={{ height: 32 }} alt="PULSE" />
+            <div style={{ width: 1, height: 24, background: C.rule }} />
+            <span style={{ fontSize: 15, fontWeight: 500, color: C.ink }}>
+              {meta?.type === 'fc'
+                ? `${meta.facilitateur}`
+                : `${lang === 'en' ? 'Project Dashboard' : 'Dashboard projet'} — ${projet}`}
+            </span>
+          </div>
+          <div style={{ display: 'flex', gap: 2, background: C.bg, borderRadius: 20, padding: 3 }}>
+            {['fr', 'en'].map(l => (
+              <button key={l} onClick={() => setLang(l)} style={{ padding: '4px 14px', borderRadius: 16, border: 'none', cursor: 'pointer', background: lang === l ? C.white : 'transparent', color: lang === l ? C.ink : C.muted, fontSize: 12, fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase', transition: 'all 0.15s' }}>{l}</button>
+            ))}
+          </div>
         </div>
       </nav>
 
