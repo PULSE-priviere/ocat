@@ -83,7 +83,9 @@ export default async function handler(req, res) {
     const nomOSC = data.records[0].fields["Nom de l'OSC"];
     if (!nomOSC) return res.status(404).json({ error: 'OSC introuvable' });
 
-    const allUrl = `https://api.airtable.com/v0/${BASE_ID}/${TABLE_ID}?filterByFormula=${encodeURIComponent(`AND({Nom de l'OSC}="${nomOSC}",{Statut_Record}!="deleted")`)}`;    const allData = await allResp.json();
+    const allUrl = `https://api.airtable.com/v0/${BASE_ID}/${TABLE_ID}?filterByFormula=${encodeURIComponent(`AND({Nom de l'OSC}="${nomOSC}",{Statut_Record}!="deleted")`)}`;
+    const allResp = await fetch(allUrl, { headers: { Authorization: `Bearer ${TOKEN}` } });
+    const allData = await allResp.json();
     return res.status(200).json({ records: allData.records || [], oscName: nomOSC });
   }
 
