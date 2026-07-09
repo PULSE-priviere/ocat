@@ -648,7 +648,11 @@ export default function ProjectPage() {
                 <h2 style={{ fontSize: 28, fontWeight: 900, color: C.ink, margin: '0 0 12px', letterSpacing: -0.5 }}>{selectedOSC}</h2>
                   <button
                     className="no-print"
-                    onClick={() => window.print()}
+                    onClick={() => {
+                      const rec = oscRecords[0];
+                      const recId = rec?.id;
+                      if (recId) window.open(`/?id=${recId}&print=1`, '_blank');
+                    }}
                     style={{
                       padding: '7px 16px', borderRadius: 6, border: `1px solid ${C.rule}`,
                       background: C.white, color: C.navy, fontSize: 12, fontWeight: 600,

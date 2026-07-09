@@ -372,6 +372,13 @@ export default function Home() {
             setSelectedOSC(safeStr(d.oscName || d.records[0].fields["Nom de l'OSC"]));
           }
           setLoading(false);
+          if (new URLSearchParams(window.location.search).get('print') === '1') {
+            setTimeout(() => {
+              setOpenSection('__all__');
+              setTimeout(() => window.print(), 500);
+            }, 800);
+          }
+        })
         })
         .catch(() => setLoading(false));
     }
