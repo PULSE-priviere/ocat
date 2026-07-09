@@ -624,7 +624,7 @@ export default function ProjectPage() {
                             title={lang === 'en' ? 'Copy OSC link' : "Copier le lien de l'OSC"}
                             style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px', fontSize: 13, color: copiedOSCLink === stat.recId ? C.green : C.blue, fontFamily: 'inherit', lineHeight: 1 }}
                           >
-                            {copiedOSCLink === stat.recId ? '✓' : '🔗'}
+                            {copiedOSCLink === stat.recId ? 'Link copied, you can send it to the CSO ✓' : 'Copy CSO link 🔗'}
                           </button>
                         )}
                       </div>
