@@ -1,15 +1,14 @@
 export default async function handler(req, res) {
-  const { id, key } = req.query;
   const BASE_ID = 'appi5FTnHDJYAqFOm';
   const TABLE_ID = 'tblwEY5bGzB3mZyZ7';
   const TOKEN = process.env.AIRTABLE_TOKEN;
 
   if (!TOKEN) return res.status(500).json({ error: 'Token non configuré' });
 
-  // ── DELETE — suppression d'un record ─────────────────────────────────────────
+  // ── DELETE — suppression d'un record (AVANT tout autre traitement) ──────────
   if (req.method === 'DELETE') {
-    const { key: delKey, deleteId } = req.query;
-    if (!delKey || !deleteId) return res.status(400).json({ error: 'key et deleteId requis' });
+    const { key, deleteId } = req.query;
+    if (!key || !deleteId) return res.status(400).json({ error: 'key et deleteId requis' });
 
     const PROJECT_TOKENS = {
       [process.env.TOKEN_SAMIM2]:   { type: 'project', projet: 'SAMIM2' },
@@ -26,13 +25,13 @@ export default async function handler(req, res) {
       [process.env.TOKEN_FC_UNNATI]:     { name: 'Unnati',                 projet: 'EU REACH CSO' },
     };
 
-    const projMatch = PROJECT_TOKENS[delKey];
-    const fcMatch = FC_TOKENS[delKey];
+    const projMatch = PROJECT_TOKENS[key];
+    const fcMatch = FC_TOKENS[key];
     if (!projMatch && !fcMatch) return res.status(403).json({ error: 'Accès refusé' });
 
-    // Vérifier que le record appartient au périmètre
-    const checkUrl = `https://api.airtable.com/v0/${BASE_ID}/${TABLE_ID}/${deleteId}`;
-    const checkResp = await fetch(checkUrl, { headers: { Authorization: `Bearer ${TOKEN}` } });
+    // Vérifier que le record existe et appartient au périmètre
+    const recUrl = `https://api.airtable.com/v0/${BASE_ID}/${TABLE_ID}/${deleteId}`;
+    const checkResp = await fetch(recUrl, { headers: { Authorization: `Bearer ${TOKEN}` } });
     if (!checkResp.ok) return res.status(404).json({ error: 'Record introuvable' });
     const rec = await checkResp.json();
     const recProjet = rec.fields?.Projet || '';
@@ -45,8 +44,7 @@ export default async function handler(req, res) {
       return res.status(403).json({ error: 'Record hors périmètre facilitateur' });
     }
 
-    // Suppression effective
-    const delResp = await fetch(checkUrl, {
+    const delResp = await fetch(recUrl, {
       method: 'DELETE',
       headers: { Authorization: `Bearer ${TOKEN}` },
     });
@@ -57,8 +55,9 @@ export default async function handler(req, res) {
     return res.status(200).json({ deleted: true, id: deleteId });
   }
 
+  // ── GET — le reste inchangé ────────────────────────────────────────────────
+  const { id, key } = req.query;
 
-  // ── Mode OSC individuelle — accès par record ID ─────────────────────────────
   if (id) {
     const url = `https://api.airtable.com/v0/${BASE_ID}/${TABLE_ID}?filterByFormula=${encodeURIComponent(`RECORD_ID()="${id}"`)}`;
     const resp = await fetch(url, { headers: { Authorization: `Bearer ${TOKEN}` } });
@@ -75,15 +74,11 @@ export default async function handler(req, res) {
     return res.status(200).json({ records: allData.records || [], oscName: nomOSC });
   }
 
-  // ── Mode chef de projet ou Field Catalyst — accès par token ────────────────
   if (key) {
-    // Tokens chefs de projet
     const PROJECT_TOKENS = {
       [process.env.TOKEN_SAMIM2]:   { type: 'project', projet: 'SAMIM2' },
       [process.env.TOKEN_EUREACH]:  { type: 'project', projet: 'EU REACH CSO' },
     };
-
-    // Tokens Field Catalysts (EU REACH CSO)
     const FC_TOKENS = {
       [process.env.TOKEN_FC_AVILLAGE]:   { name: 'A village at a time',    projet: 'EU REACH CSO' },
       [process.env.TOKEN_FC_AGRIPREMIUM]:{ name: 'Agripremium',            projet: 'EU REACH CSO' },
@@ -97,21 +92,13 @@ export default async function handler(req, res) {
 
     const projectMatch = PROJECT_TOKENS[key];
     const fcMatch = FC_TOKENS[key];
+    if (!projectMatch && !fcMatch) return res.status(403).json({ error: 'Accès refusé' });
 
-    if (!projectMatch && !fcMatch) {
-      return res.status(403).json({ error: 'Accès refusé' });
-    }
-
-    // Build Airtable filter
-    let filter;
-    let meta;
-
+    let filter, meta;
     if (projectMatch) {
-      // Chef de projet : toutes les OSC du projet
       filter = `{Projet}="${projectMatch.projet}"`;
       meta = { type: 'project', projet: projectMatch.projet };
     } else {
-      // Field Catalyst : uniquement ses OSC (filtre sur Facilitateur)
       filter = `AND({Projet}="${fcMatch.projet}", {Facilitateur}="${fcMatch.name}")`;
       meta = { type: 'fc', projet: fcMatch.projet, facilitateur: fcMatch.name };
     }
