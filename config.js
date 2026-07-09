@@ -34,7 +34,6 @@ export const EVAL_SHORT = {
   "Endline (fin d'accompagnement)": "Endline"
 };
 
-
 export const FC_LIST = [
   'A village at a time',
   'Agripremium',
@@ -45,3 +44,14 @@ export const FC_LIST = [
   'Sothaba',
   'Unnati',
 ];
+
+export const FILLOUT_URLS = {
+  'SAMIM2': {
+    fr: 'https://diagnostic-pulse.fillout.com/t/bBeHHDiMivus',
+    en: 'https://diagnostic-pulse.fillout.com/t/dwpKkKruF2us',
+  },
+  'EU REACH CSO': {
+    fr: 'https://diagnostic-pulse.fillout.com/t/bBeHHDiMivus',
+    en: 'https://diagnostic-pulse.fillout.com/t/dwpKkKruF2us',
+  },
+};

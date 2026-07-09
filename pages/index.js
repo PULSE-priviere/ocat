@@ -3,10 +3,11 @@ import {
   RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
   Legend, ResponsiveContainer, Tooltip
 } from 'recharts';
-import {
-  SEC_NAMES, SEC_NAMES_EN, SCORE_FIELDS, QUESTIONS,
-  EVAL_ORDER, EVAL_COLORS, EVAL_SHORT
+import { SEC_NAMES, SEC_NAMES_EN, 
+  SCORE_FIELDS, QUESTIONS, EVAL_ORDER, 
+  EVAL_COLORS, EVAL_SHORT, FILLOUT_URLS 
 } from '../config';
+
 import { C, SCORE_STYLE, CARD, FONT_WEIGHT } from '../theme';
 
 // ── Safe extractors ───────────────────────────────────────────────────────────
@@ -504,7 +505,7 @@ export default function Home() {
 
         {!loading && selectedOSC && records.length > 0 && (
           <>
-            {/* Header */}
+          {/* Header */}
             <div style={{ marginBottom: 40 }}>
               <UpperLabel style={{ display: 'block', marginBottom: 6 }}>
                 {safeStr(records[0]?.fields?.Projet)} · {safeStr(records[0]?.fields?.Pays)}
@@ -513,22 +514,55 @@ export default function Home() {
                 fontSize: 'clamp(28px, 4vw, 36px)', fontWeight: 900, color: C.ink,
                 margin: '0 0 16px', lineHeight: 1.08,
               }}>{selectedOSC}</h1>
-              <button
-                className="no-print"
-                onClick={() => {
-                  const prev = openSection;
-                  setOpenSection('__all__');
-                  setTimeout(() => { window.print(); setOpenSection(prev); }, 400);
-                }}
-                style={{
-                  padding: '8px 20px', borderRadius: 6, border: `1px solid ${C.rule}`,
-                  background: C.white, color: C.navy, fontSize: 13, fontWeight: 600,
-                  cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 7,
-                }}
-              >
-                <span style={{ fontSize: 15 }}>⬇</span> {lang === 'en' ? 'Download PDF' : 'Télécharger PDF'}
-              </button>
+              
+              {/* Conteneur Flex pour mettre les boutons côte à côte */}
+              <div className="no-print" style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                
+                {/* Bouton PDF existant */}
+                <button
+                  className="no-print"
+                  onClick={() => {
+                    const prev = openSection;
+                    setOpenSection('__all__');
+                    setTimeout(() => { window.print(); setOpenSection(prev); }, 400);
+                  }}
+                  style={{
+                    padding: '8px 20px', borderRadius: 6, border: `1px solid ${C.rule}`,
+                    background: C.white, color: C.navy, fontSize: 13, fontWeight: 600,
+                    cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 7,
+                  }}
+                >
+                  <span style={{ fontSize: 15 }}>⬇</span> {lang === 'en' ? 'Download PDF' : 'Télécharger PDF'}
+                </button>
+
+                {/* Nouveau bouton "Reprendre le diagnostic" */}
+                {(() => {  
+                  const proj = safeStr(records[0]?.fields?.Projet);  
+                  
+                  if (typeof FILLOUT_URLS === 'undefined') return null;
+                  const fillUrl = FILLOUT_URLS[proj]?.[lang];  
+                  
+                  return fillUrl ? (          
+                    <a
+                      href={fillUrl}      
+                      target="_blank"      
+                      rel="noopener noreferrer"      
+                      className="no-print"      
+                      style={{        
+                        padding: '8px 20px', borderRadius: 6, border: `1px solid ${C.rule}`,        
+                        background: C.white, color: C.navy, fontSize: 13, fontWeight: 600,        
+                        cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 7,        
+                        textDecoration: 'none',      
+                      }}    
+                    >      
+                      <span style={{ fontSize: 15 }}>📝</span> {lang === 'en' ? 'Resume assessment' : 'Reprendre le diagnostic'}    
+                    </a>  
+                  ) : null;
+                })()}
+
+              </div>
             </div>
+            
 
             {/* Score cards — also act as filter on click */}
             <div style={{

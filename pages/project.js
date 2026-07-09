@@ -5,7 +5,7 @@ import {
 } from 'recharts';
 import {
   SEC_NAMES, SEC_NAMES_EN, SCORE_FIELDS, QUESTIONS,
-  EVAL_ORDER, EVAL_COLORS, EVAL_SHORT, FC_LIST
+  EVAL_ORDER, EVAL_COLORS, EVAL_SHORT, FC_LIST, FILLOUT_URLS
 } from '../config';
 import { C, SCORE_STYLE, CARD, FONT_WEIGHT } from '../theme';
 
