@@ -188,7 +188,7 @@ function AppuiSummary({ presentEvals, getRecordForEval, lang }) {
     <Card style={{ marginBottom: 24, overflow: 'hidden' }}>
       <button onClick={() => setOpen(o => !o)} style={{ width: '100%', padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'none', border: 'none', cursor: 'pointer', borderBottom: open ? `1px solid ${C.rule}` : 'none' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <UpperLabel style={{ color: C.red }}>Demandes d'accompagnement</UpperLabel>
+          <UpperLabel style={{ color: C.red }}>{lang === 'en' ? 'Support requests' : "Demandes d'accompagnement"}</UpperLabel>
           <span style={{ background: '#FEE2E2', color: C.red, fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 4 }}>{items.length}</span>
         </div>
         <span style={{ fontSize: 18, color: C.muted, transform: open ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s', display: 'inline-block' }}>›</span>
@@ -286,7 +286,7 @@ function OSCDetail({ oscName, oscRecords, lang }) {
 
       {/* Radar */}
       <Card style={{ padding: '24px 24px 16px', marginBottom: 14 }}>
-        <UpperLabel style={{ display: 'block', marginBottom: 20 }}>Scores par section</UpperLabel>
+        <UpperLabel style={{ display: 'block', marginBottom: 20 }}>{lang === 'en' ? 'Scores by section' : 'Scores par section'}</UpperLabel>
         <ResponsiveContainer width="100%" height={340}>
           <RadarChart cx="50%" cy="50%" outerRadius="72%" data={radarData}>
             <PolarGrid stroke={C.rule} />
@@ -308,7 +308,7 @@ function OSCDetail({ oscName, oscRecords, lang }) {
 
       {/* Scores table */}
       <Card style={{ padding: '20px 24px', marginBottom: 14 }}>
-        <UpperLabel style={{ display: 'block', marginBottom: 16 }}>Scores par section</UpperLabel>
+        <UpperLabel style={{ display: 'block', marginBottom: 16 }}>{lang === 'en' ? 'Scores by section' : 'Scores par section'}</UpperLabel>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
           <thead>
             <tr style={{ borderBottom: `2px solid ${C.rule}` }}>
@@ -421,7 +421,7 @@ export default function ProjectPage() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const k = params.get('key');
-    if (!k) { setError('Lien invalide'); setLoading(false); return; }
+    if (!k) { setError('invalid_link'); setLoading(false); return; }
     fetch(`/api/records?key=${k}`)
       .then(r => r.json())
       .then(d => {
@@ -437,7 +437,7 @@ export default function ProjectPage() {
         }
         setLoading(false);
       })
-      .catch(() => { setError('Erreur de chargement'); setLoading(false); });
+    .catch(() => { setError('load_error'); setLoading(false); });
   }, []);
 
   const oscNames = [...new Set(records.map(r => safeStr(r.fields["Nom de l'OSC"])).filter(Boolean))].sort();
@@ -460,13 +460,14 @@ export default function ProjectPage() {
 
   if (loading) return (
     <div style={{ fontFamily: "'Inter', sans-serif", background: C.bg, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.muted }}>
-      Chargement...
+      {lang === 'en' ? 'Loading...' : 'Chargement...'}
     </div>
   );
 
+  const ERROR_LABELS = { invalid_link: { fr: 'Lien invalide', en: 'Invalid link' }, load_error: { fr: 'Erreur de chargement', en: 'Loading error' } };
   if (error) return (
     <div style={{ fontFamily: "'Inter', sans-serif", background: C.bg, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.red, fontSize: 14 }}>
-      {error}
+      {ERROR_LABELS[error]?.[lang] || error}
     </div>
   );
 
@@ -612,7 +613,7 @@ export default function ProjectPage() {
                       <div style={{ fontSize: 13, fontWeight: isSelected ? 700 : 500, color: C.ink, marginBottom: 3 }}>{name}</div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <span style={{ fontSize: 14, fontWeight: 700, color: sc }}>{stat?.score !== null ? stat.score.toFixed(1) : '—'}</span>
-                        <span style={{ fontSize: 11, color: C.muted }}>{stat?.latest ? EVAL_SHORT[stat.latest] : ''}</span>
+                        <span style={{ fontSize: 10, color: C.muted, marginLeft: 'auto' }}>{stat?.evalCount} {lang === 'en' ? 'assess.' : 'éval.'}</span>
                         <span style={{ fontSize: 10, color: C.muted, marginLeft: 'auto' }}>{stat?.evalCount} éval.</span>
                         {stat?.recId && (
                           <button
@@ -626,14 +627,15 @@ export default function ProjectPage() {
                             title={lang === 'en' ? 'Copy OSC link' : "Copier le lien de l'OSC"}
                             style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px', fontSize: 13, color: copiedOSCLink === stat.recId ? C.green : C.blue, fontFamily: 'inherit', lineHeight: 1 }}
                           >
-                            {copiedOSCLink === stat.recId ? 'Link copied, you can send it to the CSO ✓' : 'Copy CSO link 🔗'}
-                          </button>
+                            {copiedOSCLink === stat.recId
+                              ? (lang === 'en' ? 'Link copied ✓' : 'Lien copié ✓')
+                              : (lang === 'en' ? 'Copy CSO link 🔗' : "Copier le lien OSC 🔗")}                          </button>
                         )}
                       </div>
                     </div>
                   );
                 })}
-                {filteredOSCs.length === 0 && <div style={{ padding: 20, textAlign: 'center', color: C.muted, fontSize: 13 }}>Aucun résultat</div>}
+                {filteredOSCs.length === 0 && <div style={{ padding: 20, textAlign: 'center', color: C.muted, fontSize: 13 }}>{lang === 'en' ? 'No results' : 'Aucun résultat'}</div>}
               </div>
             </Card>
           </div>
@@ -685,7 +687,7 @@ export default function ProjectPage() {
                       <div style={{ fontSize: 24, fontWeight: 800, color: sc, lineHeight: 1, marginBottom: 4 }}>
                         {s.score !== null ? s.score.toFixed(1) : '—'}<span style={{ fontSize: 11, fontWeight: 400, color: C.muted }}> / 10</span>
                       </div>
-                      <div style={{ fontSize: 11, color: C.muted }}>{s.latest ? EVAL_SHORT[s.latest] : 'Aucune évaluation'}</div>
+                      <div style={{ fontSize: 11, color: C.muted }}>{s.latest ? EVAL_SHORT[s.latest] : (lang === 'en' ? 'No assessment' : 'Aucune évaluation')}</div>
                     </Card>
                   );
                 })}
