@@ -32,6 +32,11 @@ const EVAL_KEY = {
   "Endline (fin d'accompagnement)": 'endline',
 };
 
+const SCORE_LABELS = {
+  fr: { 1: 'Non mis en place', 2: 'Partiellement mis en place', 3: 'Documenté et opérationnel', 99: 'Non répondu / Non applicable' },
+  en: { 1: 'Not in place', 2: 'Partially in place', 3: 'Documented and operational', 99: 'Not answered / Not applicable' },
+};
+
 const RADAR_LABELS = {
   '1': { fr: 'Gouvernance', en: 'Governance' },
   '2': { fr: 'Finances',    en: 'Finances' },
