@@ -33,3 +33,15 @@ export const EVAL_SHORT = {
   "Suivi intermédiaire": "Suivi",
   "Endline (fin d'accompagnement)": "Endline"
 };
+
+
+export const FC_LIST = [
+  'A village at a time',
+  'Agripremium',
+  'Angels Resources Centre',
+  'Esisipho K',
+  'Luhnyezi',
+  'Power of Well',
+  'Sothaba',
+  'Unnati',
+];

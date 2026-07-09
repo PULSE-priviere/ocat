@@ -5,7 +5,7 @@ import {
 } from 'recharts';
 import {
   SEC_NAMES, SEC_NAMES_EN, SCORE_FIELDS, QUESTIONS,
-  EVAL_ORDER, EVAL_COLORS, EVAL_SHORT
+  EVAL_ORDER, EVAL_COLORS, EVAL_SHORT, FC_LIST
 } from '../config';
 
 // ── Safe extractors ───────────────────────────────────────────────────────────
@@ -441,7 +441,9 @@ export default function ProjectPage() {
   }, []);
 
   const oscNames = [...new Set(records.map(r => safeStr(r.fields["Nom de l'OSC"])).filter(Boolean))].sort();
-  const facilitateurs = [...new Set(records.map(r => safeStr(r.fields["Facilitateur"])).filter(Boolean))].sort();
+  const facilitateurs = meta?.type === 'project'
+    ? FC_LIST
+    : [...new Set(records.map(r => safeStr(r.fields["Facilitateur"])).filter(Boolean))].sort();
   const filteredRecords = selectedFCs.size > 0 ? records.filter(r => selectedFCs.has(safeStr(r.fields["Facilitateur"]))) : records;
   const filteredOscNames = [...new Set(filteredRecords.map(r => safeStr(r.fields["Nom de l'OSC"])).filter(Boolean))].sort();
   const filteredOSCs = filteredOscNames.filter(n => n.toLowerCase().includes(search.toLowerCase()));
@@ -510,7 +512,7 @@ export default function ProjectPage() {
         </div>
 
         {/* FC Cards — multi-select filter + copy link */}
-        {meta?.type === 'project' && facilitateurs.length > 0 && (
+        {meta?.type === 'project' && (
           <div style={{ marginBottom: 20 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
               <UpperLabel>{lang === 'en' ? 'Field catalysts' : 'Facilitateurs'}</UpperLabel>
