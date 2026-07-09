@@ -411,6 +411,7 @@ export default function ProjectPage() {
   const [meta, setMeta] = useState(null);
   const [fcLinks, setFcLinks] = useState([]);
   const [copiedFC, setCopiedFC] = useState(null);
+  const [copiedOSCLink, setCopiedOSCLink] = useState(null);  
   const [error, setError] = useState('');
   const [selectedOSC, setSelectedOSC] = useState('');
   const [selectedFCs, setSelectedFCs] = useState(new Set()); // multi-select
@@ -452,7 +453,7 @@ export default function ProjectPage() {
     const latest = EVAL_ORDER.slice().reverse().find(e => recs.some(r => safeStr(r.fields["Type d'évaluation"]) === e));
     const latestRec = recs.find(r => safeStr(r.fields["Type d'évaluation"]) === latest);
     const score = safeNum(latestRec?.fields?.Score_Global);
-    return { name, score, latest, evalCount: recs.length };
+    return { name, score, latest, evalCount: recs.length, recId: latestRec?.id || recs[0]?.id };
   });
 
   if (loading) return (
@@ -611,6 +612,21 @@ export default function ProjectPage() {
                         <span style={{ fontSize: 14, fontWeight: 700, color: sc }}>{stat?.score !== null ? stat.score.toFixed(1) : '—'}</span>
                         <span style={{ fontSize: 11, color: C.muted }}>{stat?.latest ? EVAL_SHORT[stat.latest] : ''}</span>
                         <span style={{ fontSize: 10, color: C.muted, marginLeft: 'auto' }}>{stat?.evalCount} éval.</span>
+                        {stat?.recId && (
+                          <button
+                            onClick={e => {
+                              e.stopPropagation();
+                              const url = `${window.location.origin}/?id=${stat.recId}`;
+                              navigator.clipboard.writeText(url);
+                              setCopiedOSCLink(stat.recId);
+                              setTimeout(() => setCopiedOSCLink(null), 2000);
+                            }}
+                            title={lang === 'en' ? 'Copy OSC link' : "Copier le lien de l'OSC"}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px', fontSize: 13, color: copiedOSCLink === stat.recId ? C.green : C.blue, fontFamily: 'inherit', lineHeight: 1 }}
+                          >
+                            {copiedOSCLink === stat.recId ? '✓' : '🔗'}
+                          </button>
+                        )}
                       </div>
                     </div>
                   );
