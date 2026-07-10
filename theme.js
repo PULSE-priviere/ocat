@@ -26,6 +26,7 @@ export const CARD = {
   border: '1px solid rgba(0,0,0,0.06)',
   borderRadius: 12,
   boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+  transition: 'box-shadow 0.2s ease, transform 0.2s ease',
 };
 
 export const FONT_WEIGHT = { normal: 400, medium: 500, semi: 600 };
