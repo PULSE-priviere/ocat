@@ -34,16 +34,25 @@ export const EVAL_SHORT = {
   "Endline (fin d'accompagnement)": "Endline"
 };
 
-export const FC_LIST = [
-  'A village at a time',
-  'Agripremium',
-  'Angels Resources Centre',
-  'Esisipho K',
-  'Luhnyezi',
-  'Power of Well',
-  'Sothaba',
-  'Unnati',
-];
+export const PROJECT_FC = {
+  'EU REACH CSO': [
+    'A village at a time',
+    'Agripremium',
+    'Angels Resources Centre',
+    'Esisipho K',
+    'Luhnyezi',
+    'Power of Well',
+    'Sothaba',
+    'Unnati',
+  ],
+  'SAMIM2': [
+    // À compléter avec les 4 vrais noms
+    'Jordan Youth Innovation Forum',
+    'MCISE',
+    'ECODEV',
+    "Lab'ess",
+  ],
+};
 
 export const FILLOUT_URLS = {
   'SAMIM2': {

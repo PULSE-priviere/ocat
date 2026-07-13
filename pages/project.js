@@ -5,7 +5,7 @@ import {
 } from 'recharts';
 import {
   SEC_NAMES, SEC_NAMES_EN, SCORE_FIELDS, QUESTIONS,
-  EVAL_ORDER, EVAL_COLORS, EVAL_SHORT, FC_LIST, FILLOUT_URLS
+  EVAL_ORDER, EVAL_COLORS, EVAL_SHORT, PROJECT_FC, FILLOUT_URLS
 } from '../config';
 import { C, SCORE_STYLE, CARD, FONT_WEIGHT } from '../theme';
 
@@ -453,8 +453,10 @@ export default function ProjectPage() {
 
   const oscNames = [...new Set(records.map(r => safeStr(r.fields["Nom de l'OSC"])).filter(Boolean))].sort();
   const facilitateurs = meta?.type === 'project'
-    ? FC_LIST
-    : [...new Set(records.map(r => safeStr(r.fields["Facilitateur"])).filter(Boolean))].sort();
+  ? (PROJECT_FC[projet] || [])
+  : meta?.type === 'fc'
+    ? [...new Set(records.map(r => safeStr(r.fields["Facilitateur"])).filter(Boolean))].sort()
+    : (PROJECT_FC[projet] || [...new Set(records.map(r => safeStr(r.fields["Facilitateur"])).filter(Boolean))].sort());
   const filteredRecords = selectedFCs.size > 0 ? records.filter(r => selectedFCs.has(safeStr(r.fields["Facilitateur"]))) : records;
   const filteredOscNames = [...new Set(filteredRecords.map(r => safeStr(r.fields["Nom de l'OSC"])).filter(Boolean))].sort();
   const filteredOSCs = filteredOscNames.filter(n => n.toLowerCase().includes(search.toLowerCase()));
@@ -555,7 +557,7 @@ export default function ProjectPage() {
         </div>
 
         {/* FC Cards — multi-select filter + copy link */}
-        {meta?.type === 'project' && (
+        {meta?.type === 'project' && (PROJECT_FC[projet]?.length > 0) && (
           <div style={{ marginBottom: 20 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
               <UpperLabel>{lang === 'en' ? 'Field catalysts' : 'Facilitateurs'}</UpperLabel>
@@ -625,6 +627,25 @@ export default function ProjectPage() {
                 );
               })}
             </div>
+          </div>
+        )}
+
+        {/* FALLBACK — projet sans FC configurés */}
+        {meta?.type === 'project' && (!PROJECT_FC[projet] || PROJECT_FC[projet].length === 0) && (
+          <div style={{ textAlign: 'center', padding: '60px 20px', color: C.muted, marginBottom: 20 }}>
+            <div style={{ fontSize: 40, marginBottom: 12 }}>📋</div>
+            <div style={{ fontSize: 15, fontWeight: 600, color: C.navy, marginBottom: 6 }}>
+              {lang === 'en' ? 'No assessments yet' : 'Aucun diagnostic réalisé'}
+            </div>
+            <div style={{ fontSize: 13, marginBottom: 20 }}>
+              {lang === 'en' ? 'Start your first organisational assessment' : 'Lancez votre premier diagnostic organisationnel'}
+            </div>
+            {FILLOUT_URLS[projet]?.[lang] && (
+              <a href={FILLOUT_URLS[projet][lang]} target="_blank" rel="noopener noreferrer"
+                style={{ padding: '10px 24px', borderRadius: 8, background: C.blue, color: '#fff', fontSize: 13, fontWeight: 600, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 15 }}>➕</span> {lang === 'en' ? 'Start assessment' : 'Commencer un diagnostic'}
+              </a>
+            )}
           </div>
         )}
 
