@@ -14,6 +14,7 @@ export default async function handler(req, res) {
       const PROJECT_TOKENS = {
         [process.env.TOKEN_SAMIM2]:   { type: 'project', projet: 'SAMIM2' },
         [process.env.TOKEN_EUREACH]:  { type: 'project', projet: 'EU REACH CSO' },
+        [process.env.TOKEN_BUNYAN]:   { type: 'project', projet: 'BUNYAN' },
       };
       const FC_TOKENS = {
         [process.env.TOKEN_FC_AVILLAGE]:   { name: 'A village at a time',    projet: 'EU REACH CSO' },
@@ -24,6 +25,16 @@ export default async function handler(req, res) {
         [process.env.TOKEN_FC_POWEROFWELL]:{ name: 'Power of Well',          projet: 'EU REACH CSO' },
         [process.env.TOKEN_FC_SOTHABA]:    { name: 'Sothaba',                projet: 'EU REACH CSO' },
         [process.env.TOKEN_FC_UNNATI]:     { name: 'Unnati',                 projet: 'EU REACH CSO' },
+        // SAMIM2
+        [process.env.TOKEN_FC_SA1]:  { name: 'ECODEV',  projet: 'SAMIM2' },
+        [process.env.TOKEN_FC_SA2]:  { name: 'MCISE',  projet: 'SAMIM2' },
+        [process.env.TOKEN_FC_SA3]:  { name: 'Jordan Youth Innovation Forum',  projet: 'SAMIM2' },
+        [process.env.TOKEN_FC_SA4]:  { name: "Lab'ess",  projet: 'SAMIM2' },
+        // BUNYAN
+        [process.env.TOKEN_FC_SOUHAIL]:    { name: 'Souhail Boukraa',    projet: 'BUNYAN' },
+        [process.env.TOKEN_FC_YOUNESS]:    { name: 'Youness Boudohay',   projet: 'BUNYAN' },
+        [process.env.TOKEN_FC_NAJLAA]:     { name: 'Najlaa Fathi',       projet: 'BUNYAN' },
+        [process.env.TOKEN_FC_ABDELJALIL]: { name: 'Abdeljalil Amzil',   projet: 'BUNYAN' },
       };
 
       const projMatch = PROJECT_TOKENS[key];
@@ -93,6 +104,7 @@ export default async function handler(req, res) {
     const PROJECT_TOKENS = {
       [process.env.TOKEN_SAMIM2]:   { type: 'project', projet: 'SAMIM2' },
       [process.env.TOKEN_EUREACH]:  { type: 'project', projet: 'EU REACH CSO' },
+      [process.env.TOKEN_BUNYAN]:   { type: 'project', projet: 'BUNYAN' },
     };
     const FC_TOKENS = {
       [process.env.TOKEN_FC_AVILLAGE]:   { name: 'A village at a time',    projet: 'EU REACH CSO' },
@@ -103,6 +115,16 @@ export default async function handler(req, res) {
       [process.env.TOKEN_FC_POWEROFWELL]:{ name: 'Power of Well',          projet: 'EU REACH CSO' },
       [process.env.TOKEN_FC_SOTHABA]:    { name: 'Sothaba',                projet: 'EU REACH CSO' },
       [process.env.TOKEN_FC_UNNATI]:     { name: 'Unnati',                 projet: 'EU REACH CSO' },
+      // SAMIM2
+      [process.env.TOKEN_FC_SA1]:  { name: 'ECODEV',  projet: 'SAMIM2' },
+      [process.env.TOKEN_FC_SA2]:  { name: 'MCISE',  projet: 'SAMIM2' },
+      [process.env.TOKEN_FC_SA3]:  { name: 'Jordan Youth Innovation Forum',  projet: 'SAMIM2' },
+      [process.env.TOKEN_FC_SA4]:  { name: "Lab'ess",  projet: 'SAMIM2' },
+      // BUNYAN
+      [process.env.TOKEN_FC_SOUHAIL]:    { name: 'Souhail Boukraa',    projet: 'BUNYAN' },
+      [process.env.TOKEN_FC_YOUNESS]:    { name: 'Youness Boudohay',   projet: 'BUNYAN' },
+      [process.env.TOKEN_FC_NAJLAA]:     { name: 'Najlaa Fathi',       projet: 'BUNYAN' },
+      [process.env.TOKEN_FC_ABDELJALIL]: { name: 'Abdeljalil Amzil',   projet: 'BUNYAN' },
     };
 
     const projectMatch = PROJECT_TOKENS[key];

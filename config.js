@@ -46,11 +46,16 @@ export const PROJECT_FC = {
     'Unnati',
   ],
   'SAMIM2': [
-    // À compléter avec les 4 vrais noms
     'Jordan Youth Innovation Forum',
     'MCISE',
     'ECODEV',
     "Lab'ess",
+  ],
+  'BUNYAN': [
+    'Oriental',
+    'Rabat Salé Kénitra',
+    'Casablanca-Settat',
+    "Sous Massa / Béni Mellal-Khénifra",
   ],
 };
 
