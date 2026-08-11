@@ -52,10 +52,10 @@ export const PROJECT_FC = {
     "Lab'ess",
   ],
   'BUNYAN': [
-    'Oriental',
-    'Rabat Salé Kénitra',
-    'Casablanca-Settat',
-    "Sous Massa / Béni Mellal-Khénifra",
+    'Souhail Boukraa',
+    'Youness Boudohay',
+    'Najlaa Fathi',
+    'Abdeljalil Amzil',
   ],
 };
 
@@ -67,5 +67,9 @@ export const FILLOUT_URLS = {
   'EU REACH CSO': {
     fr: 'https://diagnostic-pulse.fillout.com/t/bBeHHDiMivus',
     en: 'https://diagnostic-pulse.fillout.com/t/dwpKkKruF2us',
+  },
+  'BUNYAN': {
+    fr: 'https://diagnostic-pulse.fillout.com/t/TON_URL_BUNYAN_FR',
+    en: 'https://diagnostic-pulse.fillout.com/t/TON_URL_BUNYAN_EN',
   },
 };
