@@ -69,7 +69,7 @@ export const FILLOUT_URLS = {
     en: 'https://diagnostic-pulse.fillout.com/t/dwpKkKruF2us',
   },
   'BUNYAN': {
-    fr: 'https://diagnostic-pulse.fillout.com/t/TON_URL_BUNYAN_FR',
-    en: 'https://diagnostic-pulse.fillout.com/t/TON_URL_BUNYAN_EN',
+    fr: 'https://diagnostic-pulse.fillout.com/t/bBeHHDiMivus',
+    en: 'https://diagnostic-pulse.fillout.com/t/dwpKkKruF2us',
   },
 };
