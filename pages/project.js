@@ -410,26 +410,27 @@ export default function ProjectPage() {
   const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const k = params.get('key');
-    if (!k) { setError('invalid_link'); setLoading(false); return; }
-    fetch(`/api/records?key=${k}`)
-      .then(r => r.json())
-      .then(d => {
-        if (d.error) { setError(d.error); setLoading(false); return; }
-        setRecords(d.records || []);
-        setProjet(d.projet || '');
-        setMeta({ type: d.type, facilitateur: d.facilitateur });
-        // Load FC share links (only for project managers)
-        if (d.type === 'project') {
-          fetch(`/api/fc-links?key=${k}`)
-            .then(r => r.json())
-            .then(fl => setFcLinks(fl.fcs || []));
-        }
-        setLoading(false);
-      })
-    .catch(() => { setError('load_error'); setLoading(false); });
-  }, []);
+  const params = new URLSearchParams(window.location.search);
+  const k = params.get('key');
+  if (!k) { setError('invalid_link'); setLoading(false); return; }
+  const fcParam = params.get('fc'); // ← ajout
+  fetch(`/api/records?key=${k}`)
+    .then(r => r.json())
+    .then(d => {
+      if (d.error) { setError(d.error); setLoading(false); return; }
+      setRecords(d.records || []);
+      setProjet(d.projet || '');
+      setMeta({ type: d.type, facilitateur: d.facilitateur });
+      if (fcParam) setSelectedFCs(new Set(fcParam.split(','))); // ← ajout
+      if (d.type === 'project') {
+        fetch(`/api/fc-links?key=${k}`)
+          .then(r => r.json())
+          .then(fl => setFcLinks(fl.fcs || []));
+      }
+      setLoading(false);
+    })
+  .catch(() => { setError('load_error'); setLoading(false); });
+}, []);
 
   async function handleDelete() {
     if (!deleteTarget) return;
