@@ -112,6 +112,7 @@ export default async function handler(req, res) {
       [process.env.TOKEN_SAMIM2]:   { type: 'project', projet: 'SAMIM2' },
       [process.env.TOKEN_EUREACH]:  { type: 'project', projet: 'EU REACH CSO' },
       [process.env.TOKEN_BUNYAN]:   { type: 'project', projet: 'BUNYAN' },
+      [process.env.TOKEN_SEEED]:    { type: 'project', projet: 'SEEED' },   // ← ligne à ajouter
     };
     const FC_TOKENS = {
       [process.env.TOKEN_FC_AVILLAGE]:   { name: 'A village at a time',    projet: 'EU REACH CSO' },
@@ -132,6 +133,12 @@ export default async function handler(req, res) {
       [process.env.TOKEN_FC_YOUNESS]:    { name: 'Youness Boudohay',   projet: 'BUNYAN' },
       [process.env.TOKEN_FC_NAJLAA]:     { name: 'Najlaa Fathi',       projet: 'BUNYAN' },
       [process.env.TOKEN_FC_ABDELJALIL]: { name: 'Abdeljalil Amzil',   projet: 'BUNYAN' },
+      // SEEED ← bloc à ajouter
+      [process.env.TOKEN_FC_MAYA]: { name: 'Maya', projet: 'SEEED' },
+      [process.env.TOKEN_FC_NAX]:  { name: 'Nax',  projet: 'SEEED' },
+      [process.env.TOKEN_FC_FARA]: { name: 'Fara', projet: 'SEEED' },
+      [process.env.TOKEN_FC_HERY]: { name: 'Hery', projet: 'SEEED' },
+      [process.env.TOKEN_FC_ANJA]: { name: 'Anja', projet: 'SEEED' },
     };
 
     const projectMatch = PROJECT_TOKENS[key];
