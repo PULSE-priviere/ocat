@@ -57,6 +57,13 @@ export const PROJECT_FC = {
     'Najlaa Fathi',
     'Abdeljalil Amzil',
   ],
+    'SEEED': [
+    'Maya',
+    'Nax',
+    'Fara',
+    'Hery',
+    'Anja',
+  ],
 };
 
 export const FILLOUT_URLS = {
