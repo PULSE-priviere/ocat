@@ -207,12 +207,11 @@ function AppuiSummary({ presentEvals, getRecordForEval, lang }) {
     </Card>
   );
 }
-
 // ── OSC detail view (embedded) ────────────────────────────────────────────────
 function OSCDetail({ oscName, oscRecords, lang }) {
   const [openSection, setOpenSection] = useState(null);
   const [selectedEval, setSelectedEval] = useState(null);
-  const [versionByEval, setVersionByEval] = useState({}); // { baselineLabel: recId }
+  const [versionByEval, setVersionByEval] = useState({}); // { evalType: recId }
   const secNames = lang === 'en' ? SEC_NAMES_EN : SEC_NAMES;
 
   // Grouper les records par type d'évaluation (gère les doublons)
@@ -232,10 +231,6 @@ function OSCDetail({ oscName, oscRecords, lang }) {
     const chosenId = versionByEval[e];
     return versions.find(r => r.id === chosenId) || versions[versions.length - 1]; // dernière version par défaut
   };
-
-  const allPresentEvals = EVAL_ORDER.filter(e => oscRecords.some(r => safeStr(r.fields["Type d'évaluation"]) === e));
-  const presentEvals = selectedEval ? allPresentEvals.filter(e => e === selectedEval) : allPresentEvals;
-  const getRecordForEval = (e) => oscRecords.find(r => safeStr(r.fields["Type d'évaluation"]) === e);
 
   const radarData = Object.entries(SCORE_FIELDS).map(([sec, field]) => {
     const entry = { section: RADAR_LABELS[sec]?.[lang] || `S${sec}` };
@@ -287,6 +282,7 @@ function OSCDetail({ oscName, oscRecords, lang }) {
           })}
         </div>
       )}
+
       {/* Eval cards */}
       <div style={{ display: 'grid', gridTemplateColumns: `repeat(${allPresentEvals.length}, minmax(150px, 200px))`, gap: 12, marginBottom: 24 }}>
         {allPresentEvals.map(evalType => {
