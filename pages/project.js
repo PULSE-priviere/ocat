@@ -208,10 +208,8 @@ function AppuiSummary({ presentEvals, getRecordForEval, lang }) {
   );
 }
 // ── OSC detail view (embedded) ────────────────────────────────────────────────
-function OSCDetail({ oscName, oscRecords, lang }) {
+function OSCDetail({ oscName, oscRecords, lang, selectedEval, setSelectedEval, versionByEval, setVersionByEval }) {
   const [openSection, setOpenSection] = useState(null);
-  const [selectedEval, setSelectedEval] = useState(null);
-  const [versionByEval, setVersionByEval] = useState({}); // { evalType: recId }
   const secNames = lang === 'en' ? SEC_NAMES_EN : SEC_NAMES;
 
   // Grouper les records par type d'évaluation (gère les doublons)
@@ -261,7 +259,8 @@ function OSCDetail({ oscName, oscRecords, lang }) {
                 <div style={{ display: 'flex', gap: 4 }}>
                   {versions.map((rec, i) => {
                     const isActive = current?.id === rec.id;
-                    const date = safeStr(rec.fields['Date de soumission']) || `v${i + 1}`;
+                    const date = safeStr(rec.fields['Date de soumission']);
+                    const label = `v${i + 1}${date ? ` - ${date}` : ''}`;
                     return (
                       <button key={rec.id}
                         onClick={() => setVersionByEval(prev => ({ ...prev, [e]: rec.id }))}
@@ -272,7 +271,7 @@ function OSCDetail({ oscName, oscRecords, lang }) {
                           color: isActive ? C.white : C.mid,
                           cursor: 'pointer', fontFamily: 'inherit',
                         }}>
-                        {date}
+                        {label}
                       </button>
                     );
                   })}
@@ -456,6 +455,8 @@ export default function ProjectPage() {
   const [lang, setLang] = useState('fr');
   const [deleteTarget, setDeleteTarget] = useState(null); // { id, name }
   const [deleting, setDeleting] = useState(false);
+  const [selectedEval, setSelectedEval] = useState(null);
+  const [versionByEval, setVersionByEval] = useState({});
 
   useEffect(() => {
   const params = new URLSearchParams(window.location.search);
@@ -510,6 +511,24 @@ export default function ProjectPage() {
   const filteredOscNames = [...new Set(filteredRecords.map(r => safeStr(r.fields["Nom de l'OSC"])).filter(Boolean))].sort();
   const filteredOSCs = filteredOscNames.filter(n => n.toLowerCase().includes(search.toLowerCase()));
   const oscRecords = selectedOSC ? filteredRecords.filter(r => safeStr(r.fields["Nom de l'OSC"]) === selectedOSC) : [];
+
+  // Version tracking pour l'OSC actuellement affichée
+  const recordsByEvalForOSC = {};
+  for (const e of EVAL_ORDER) {
+    recordsByEvalForOSC[e] = oscRecords
+      .filter(r => safeStr(r.fields["Type d'évaluation"]) === e)
+      .sort((a, b) => safeStr(a.fields['Date de soumission']).localeCompare(safeStr(b.fields['Date de soumission'])));
+  }
+  const presentEvalsForOSC = EVAL_ORDER.filter(e => recordsByEvalForOSC[e].length > 0);
+  function getActiveRecordForEval(e) {
+    const versions = recordsByEvalForOSC[e];
+    if (!versions?.length) return null;
+    const chosenId = versionByEval[e];
+    return versions.find(r => r.id === chosenId) || versions[versions.length - 1];
+  }
+  const pdfEval = selectedEval || presentEvalsForOSC[presentEvalsForOSC.length - 1];
+  const pdfRecord = pdfEval ? getActiveRecordForEval(pdfEval) : null;
+
 
   // Quick stats
   const stats = filteredOscNames.map(name => {
@@ -707,13 +726,15 @@ export default function ProjectPage() {
             style={{ width: '100%', maxWidth: 400, padding: '9px 14px', borderRadius: 8, border: `1px solid ${C.rule}`, fontSize: 13, color: C.ink, outline: 'none', fontFamily: 'inherit', background: C.white }}
           />
         </div>
+        
 
         {/* OSC detail view (selected) */}
+        
         {selectedOSC && oscRecords.length > 0 ? (
           <div style={{ maxWidth: 1080 }}>
             {/* Back button */}
             <button
-              onClick={() => setSelectedOSC('')}
+              onClick={() => { setSelectedOSC(''); setSelectedEval(null); setVersionByEval({}); }}
               style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 14px', borderRadius: 6, border: `1px solid ${C.rule}`, background: C.white, color: C.mid, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', marginBottom: 20 }}
             >
               ← {lang === 'en' ? 'Back to list' : 'Retour à la liste'}
@@ -728,9 +749,7 @@ export default function ProjectPage() {
                 <button
                   className="no-print"
                   onClick={() => {
-                    const rec = oscRecords[0];
-                    const recId = rec?.id;
-                    if (recId) window.open(`/?id=${recId}&print=1`, '_blank');
+                    if (pdfRecord?.id) window.open(`/?id=${pdfRecord.id}&print=1`, '_blank');
                   }}
                   style={{
                     padding: '7px 16px', borderRadius: 6, border: `1px solid ${C.rule}`,
@@ -740,24 +759,42 @@ export default function ProjectPage() {
                   }}
                 >
                   <span style={{ fontSize: 14 }}>⬇</span> {lang === 'en' ? 'Download PDF' : 'Télécharger PDF'}
+                  {pdfRecord && recordsByEvalForOSC[pdfEval]?.length > 1 && (
+                    <span style={{ fontSize: 10, color: C.muted, fontWeight: 400 }}>
+                      ({EVAL_SHORT[pdfEval]} · {safeStr(pdfRecord.fields['Date de soumission']) || '—'})
+                    </span>
+                  )}
                 </button>
-                {oscRecords.map(rec => (
-                  <button key={rec.id}
-                    className="no-print"
-                    onClick={() => setDeleteTarget({ id: rec.id, name: `${selectedOSC} — ${EVAL_SHORT[safeStr(rec.fields["Type d'évaluation"])] || '?'}` })}
-                    style={{
-                      padding: '7px 12px', borderRadius: 6, border: `1px solid #FECACA`,
-                      background: '#FEF2F2', color: C.red, fontSize: 12, fontWeight: 600,
-                      cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 5,
-                      fontFamily: 'inherit',
-                    }}
-                  >
-                    <span style={{ fontSize: 13 }}>🗑 Delete</span> {EVAL_SHORT[safeStr(rec.fields["Type d'évaluation"])] || (lang === 'en' ? 'Delete' : 'Supprimer')}
-                  </button>
-                ))}
+
+                {presentEvalsForOSC.map(e => {
+                  const rec = getActiveRecordForEval(e);
+                  if (!rec) return null;
+                  const submDate = safeStr(rec.fields['Date de soumission']);
+                  return (
+                    <button key={e}
+                      className="no-print"
+                      onClick={() => setDeleteTarget({
+                        id: rec.id,
+                        name: `${selectedOSC} — ${EVAL_SHORT[e]}${submDate ? ` (${submDate})` : ''}`
+                      })}
+                      style={{
+                        padding: '7px 12px', borderRadius: 6, border: `1px solid #FECACA`,
+                        background: '#FEF2F2', color: C.red, fontSize: 12, fontWeight: 600,
+                        cursor: 'pointer', display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: 2,
+                        fontFamily: 'inherit', lineHeight: 1.3,
+                      }}
+                    >
+                      <span>🗑 {lang === 'en' ? 'Delete' : 'Supprimer'} {EVAL_SHORT[e]}</span>
+                      {submDate && <span style={{ fontSize: 10, fontWeight: 400, color: C.muted }}>{submDate}</span>}
+                    </button>
+                  );
+                })}
               </div>
             </div>
-            <OSCDetail oscName={selectedOSC} oscRecords={oscRecords} lang={lang} />
+            <OSCDetail oscName={selectedOSC} oscRecords={oscRecords} lang={lang}
+              selectedEval={selectedEval} setSelectedEval={setSelectedEval}
+              versionByEval={versionByEval} setVersionByEval={setVersionByEval}
+            />
           </div>
         ) : (
           /* OSC card grid */
@@ -771,7 +808,7 @@ export default function ProjectPage() {
                 const sc = s.score !== null ? (s.score >= 7 ? C.green : s.score >= 5 ? C.orange : C.red) : C.muted;
                 return (
                   <Card key={s.name}
-                    onClick={() => setSelectedOSC(s.name)}
+                    onClick={() => { setSelectedOSC(s.name); setSelectedEval(null); setVersionByEval({}); }}
                     style={{ padding: '14px 16px', cursor: 'pointer', border: `1px solid ${C.rule}`, transition: 'border-color 0.15s' }}
                   >
                     <div style={{ fontSize: 13, fontWeight: 600, color: C.ink, marginBottom: 6 }}>{s.name}</div>
