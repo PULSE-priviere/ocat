@@ -212,7 +212,26 @@ function AppuiSummary({ presentEvals, getRecordForEval, lang }) {
 function OSCDetail({ oscName, oscRecords, lang }) {
   const [openSection, setOpenSection] = useState(null);
   const [selectedEval, setSelectedEval] = useState(null);
+  const [versionByEval, setVersionByEval] = useState({}); // { baselineLabel: recId }
   const secNames = lang === 'en' ? SEC_NAMES_EN : SEC_NAMES;
+
+  // Grouper les records par type d'évaluation (gère les doublons)
+  const recordsByEval = {};
+  for (const e of EVAL_ORDER) {
+    recordsByEval[e] = oscRecords
+      .filter(r => safeStr(r.fields["Type d'évaluation"]) === e)
+      .sort((a, b) => safeStr(a.fields['Date de soumission']).localeCompare(safeStr(b.fields['Date de soumission'])));
+  }
+
+  const allPresentEvals = EVAL_ORDER.filter(e => recordsByEval[e].length > 0);
+  const presentEvals = selectedEval ? allPresentEvals.filter(e => e === selectedEval) : allPresentEvals;
+
+  const getRecordForEval = (e) => {
+    const versions = recordsByEval[e];
+    if (!versions?.length) return null;
+    const chosenId = versionByEval[e];
+    return versions.find(r => r.id === chosenId) || versions[versions.length - 1]; // dernière version par défaut
+  };
 
   const allPresentEvals = EVAL_ORDER.filter(e => oscRecords.some(r => safeStr(r.fields["Type d'évaluation"]) === e));
   const presentEvals = selectedEval ? allPresentEvals.filter(e => e === selectedEval) : allPresentEvals;
@@ -235,6 +254,39 @@ function OSCDetail({ oscName, oscRecords, lang }) {
 
   return (
     <div>
+      {/* Version tabs — uniquement pour les types d'éval en doublon */}
+      {allPresentEvals.some(e => recordsByEval[e].length > 1) && (
+        <div style={{ marginBottom: 16 }}>
+          {allPresentEvals.filter(e => recordsByEval[e].length > 1).map(e => {
+            const versions = recordsByEval[e];
+            const current = getRecordForEval(e);
+            return (
+              <div key={e} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                <UpperLabel style={{ color: EVAL_COLORS[e] }}>{EVAL_SHORT[e]}</UpperLabel>
+                <div style={{ display: 'flex', gap: 4 }}>
+                  {versions.map((rec, i) => {
+                    const isActive = current?.id === rec.id;
+                    const date = safeStr(rec.fields['Date de soumission']) || `v${i + 1}`;
+                    return (
+                      <button key={rec.id}
+                        onClick={() => setVersionByEval(prev => ({ ...prev, [e]: rec.id }))}
+                        style={{
+                          padding: '4px 10px', borderRadius: 14, fontSize: 11, fontWeight: 600,
+                          border: `1.5px solid ${isActive ? EVAL_COLORS[e] : C.rule}`,
+                          background: isActive ? EVAL_COLORS[e] : C.white,
+                          color: isActive ? C.white : C.mid,
+                          cursor: 'pointer', fontFamily: 'inherit',
+                        }}>
+                        {date}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
       {/* Eval cards */}
       <div style={{ display: 'grid', gridTemplateColumns: `repeat(${allPresentEvals.length}, minmax(150px, 200px))`, gap: 12, marginBottom: 24 }}>
         {allPresentEvals.map(evalType => {
