@@ -80,3 +80,24 @@ export const FILLOUT_URLS = {
     en: 'https://diagnostic-pulse.fillout.com/t/dwpKkKruF2us',
   },
 };
+
+// ── Édition FC / Chef de projet ──
+export const ANSWER_OPTIONS = [
+  "Non applicable (N/A)",
+  "1 - Non mis en place / Non fonctionnel",
+  "2 - Partiellement mis en place / fonctionnel",
+  "3 - Documenté et opérationnel/fonctionnel",
+];
+export const APPUI_OPTIONS = ["Oui", "Non"];
+
+const APPUI_SEP = '—'; // ⚠️ vérifier dans T1 : '—' (cadratin) ou '-' (tiret simple)
+
+export const qField     = q => `[${q.id}] ${q.fr}`;
+export const appuiField = q => `Appui structure ${APPUI_SEP} ${q.id}`;
+// Score_S1_Gouvernance → Commentaire_S1_Gouvernance
+export const commentField = sec => SCORE_FIELDS[sec].replace(/^Score_/, 'Commentaire_');
+export const COMMENT_GLOBAL = 'Commentaire global';
+
+export const QUESTION_FIELDS = QUESTIONS.map(qField);
+export const APPUI_FIELDS    = QUESTIONS.map(appuiField);
+export const COMMENT_FIELDS  = [...Object.keys(SCORE_FIELDS).map(commentField), COMMENT_GLOBAL];

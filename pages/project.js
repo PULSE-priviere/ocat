@@ -1,11 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
   Legend, ResponsiveContainer, Tooltip
 } from 'recharts';
 import {
   SEC_NAMES, SEC_NAMES_EN, SCORE_FIELDS, QUESTIONS,
-  EVAL_ORDER, EVAL_COLORS, EVAL_SHORT, PROJECT_FC, FILLOUT_URLS
+  EVAL_ORDER, EVAL_COLORS, EVAL_SHORT, PROJECT_FC, FILLOUT_URLS,
+  ANSWER_OPTIONS, qField, appuiField, COMMENT_GLOBAL,
+  COMMENT_FIELDS as EDITABLE_COMMENT_FIELDS, // ⚠️ alias : project.js a déjà un COMMENT_FIELDS local
 } from '../config';
 import { C, SCORE_STYLE, CARD, FONT_WEIGHT } from '../theme';
 
@@ -439,6 +441,169 @@ function OSCDetail({ oscName, oscRecords, lang, selectedEval, setSelectedEval, v
   );
 }
 
+// ── Édition d'une évaluation ──────────────────────────────────────────────────
+const EDIT_T = {
+  fr: {
+    edit: 'Modifier', editing: 'Modification', save: 'Enregistrer', saving: 'Enregistrement…', cancel: 'Annuler',
+    pending: n => `${n} modification${n > 1 ? 's' : ''} non enregistrée${n > 1 ? 's' : ''}`,
+    none: 'Aucune modification', support: 'Accompagnement demandé', unanswered: '— Non répondu',
+    secComment: 'Observation de la section', globalComment: 'Observation générale',
+    leave: 'Des modifications ne sont pas enregistrées. Quitter quand même ?',
+    error: "Erreur lors de l'enregistrement", scoresNote: 'Les scores sont recalculés automatiquement après enregistrement.',
+  },
+  en: {
+    edit: 'Edit', editing: 'Editing', save: 'Save', saving: 'Saving…', cancel: 'Cancel',
+    pending: n => `${n} unsaved change${n > 1 ? 's' : ''}`,
+    none: 'No changes', support: 'Support requested', unanswered: '— Not answered',
+    secComment: 'Section observation', globalComment: 'General observation',
+    leave: 'You have unsaved changes. Leave anyway?',
+    error: 'Error while saving', scoresNote: 'Scores are recalculated automatically after saving.',
+  },
+};
+const OPTION_LABELS_EN = {
+  "Non applicable (N/A)": 'Not applicable (N/A)',
+  "1 - Non mis en place / Non fonctionnel": '1 - Not in place / Not functional',
+  "2 - Partiellement mis en place / fonctionnel": '2 - Partially in place / functional',
+  "3 - Documenté et opérationnel/fonctionnel": '3 - Documented and operational/functional',
+};
+
+// Nom réel du champ dans le record (gère apostrophes typographiques), sinon nom théorique
+function questionKey(record, q) {
+  return Object.keys(record.fields).find(k => k.startsWith(`[${q.id}]`)) || qField(q);
+}
+
+function EvalEditor({ record, lang, onCancel, onSaved, onDirtyChange }) {
+  const t = EDIT_T[lang];
+  const secNames = lang === 'en' ? SEC_NAMES_EN : SEC_NAMES;
+  const [openSec, setOpenSec] = useState('1');
+  const [saving, setSaving] = useState(false);
+  const [errMsg, setErrMsg] = useState('');
+
+  const qKeys = useMemo(() => Object.fromEntries(QUESTIONS.map(q => [q.id, questionKey(record, q)])), [record]);
+  const commentSet = useMemo(() => new Set(EDITABLE_COMMENT_FIELDS), []);
+
+  const initial = useMemo(() => {
+    const d = {};
+    for (const q of QUESTIONS) {
+      d[qKeys[q.id]] = safeStr(record.fields[qKeys[q.id]]);
+      d[appuiField(q)] = safeStr(record.fields[appuiField(q)]) === 'Oui' ? 'Oui' : 'Non';
+    }
+    for (const c of EDITABLE_COMMENT_FIELDS) d[c] = safeStr(record.fields[c]);
+    return d;
+  }, [record, qKeys]);
+
+  const [draft, setDraft] = useState(initial);
+  useEffect(() => { setDraft(initial); setErrMsg(''); }, [initial]);
+
+  const changed = Object.keys(draft).filter(k => draft[k] !== initial[k]);
+  const changedSet = new Set(changed);
+  useEffect(() => { onDirtyChange(changed.length > 0); }, [changed.length]); // eslint-disable-line
+
+  const set = (k, v) => setDraft(prev => ({ ...prev, [k]: v }));
+
+  async function handleSave() {
+    if (!changed.length) return;
+    setSaving(true); setErrMsg('');
+    const fields = {};
+    for (const k of changed) fields[k] = commentSet.has(k) ? draft[k] : (draft[k] || null);
+    try {
+      const key = new URLSearchParams(window.location.search).get('key');
+      const resp = await fetch(`/api/records?key=${encodeURIComponent(key)}&updateId=${record.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fields }),
+      });
+      const data = await resp.json();
+      if (!resp.ok || !data.record) throw new Error(safeStr(data.detail) || safeStr(data.error) || String(resp.status));
+      onSaved(data.record);
+    } catch (e) {
+      setErrMsg(`${t.error} : ${e.message}`);
+    }
+    setSaving(false);
+  }
+
+  const evalType = safeStr(record.fields["Type d'évaluation"]);
+  const fieldStyle = { width: '100%', padding: '8px 10px', borderRadius: 6, border: `1px solid ${C.rule}`, fontSize: 13, fontFamily: 'inherit', color: C.ink, background: C.white };
+
+  return (
+    <div>
+      <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10 }}>
+        <UpperLabel style={{ color: EVAL_COLORS[evalType] || C.navy }}>{t.editing} — {EVAL_SHORT[evalType] || evalType}</UpperLabel>
+        <span style={{ fontSize: 11, color: C.muted }}>{t.scoresNote}</span>
+      </div>
+
+      {Object.entries(secNames).map(([sec, secName]) => {
+        const secQs = QUESTIONS.filter(q => q.sec === sec);
+        const cField = SCORE_FIELDS[sec].replace(/^Score_/, 'Commentaire_');
+        const secChanges = secQs.filter(q => changedSet.has(qKeys[q.id]) || changedSet.has(appuiField(q))).length + (changedSet.has(cField) ? 1 : 0);
+        const isOpen = openSec === sec;
+        return (
+          <Card key={sec} style={{ marginBottom: 8, overflow: 'hidden', border: isOpen ? `1.5px solid ${C.navy}` : `1px solid ${C.rule}` }}>
+            <button onClick={() => setOpenSec(isOpen ? null : sec)}
+              style={{ width: '100%', padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 8, background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' }}>
+              <span style={{ background: '#EFF6FF', color: C.blue, fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 4 }}>S{sec}</span>
+              <span style={{ fontSize: 13, fontWeight: 600, color: C.ink, flex: 1 }}>{secName}</span>
+              {secChanges > 0 && <span style={{ background: '#FEF3C7', color: C.orange, fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 4 }}>{secChanges}</span>}
+              <span style={{ fontSize: 18, color: C.muted, transform: isOpen ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s', display: 'inline-block' }}>›</span>
+            </button>
+            {isOpen && (
+              <div style={{ padding: '4px 18px 18px', borderTop: `1px solid ${C.rule}` }}>
+                {secQs.map(q => {
+                  const k = qKeys[q.id], a = appuiField(q);
+                  const isChanged = changedSet.has(k) || changedSet.has(a);
+                  return (
+                    <div key={q.id} style={{ padding: '12px 0', borderBottom: `1px solid ${C.rule}`, background: isChanged ? '#FFFBEB' : 'transparent' }}>
+                      <div style={{ fontSize: 13, color: C.ink, lineHeight: 1.55, marginBottom: 8 }}>
+                        <strong style={{ color: C.muted, marginRight: 6, fontSize: 11 }}>{q.id}</strong>{lang === 'en' ? q.en : q.fr}
+                      </div>
+                      <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+                        <select value={draft[k]} onChange={e => set(k, e.target.value)} style={{ ...fieldStyle, width: 'auto', minWidth: 280 }}>
+                          <option value="">{t.unanswered}</option>
+                          {ANSWER_OPTIONS.map(o => <option key={o} value={o}>{lang === 'en' ? OPTION_LABELS_EN[o] : o}</option>)}
+                        </select>
+                        <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: draft[a] === 'Oui' ? C.red : C.mid, cursor: 'pointer' }}>
+                          <input type="checkbox" checked={draft[a] === 'Oui'} onChange={e => set(a, e.target.checked ? 'Oui' : 'Non')} />
+                          {t.support}
+                        </label>
+                      </div>
+                    </div>
+                  );
+                })}
+                <div style={{ marginTop: 14 }}>
+                  <UpperLabel style={{ display: 'block', marginBottom: 6 }}>{t.secComment}</UpperLabel>
+                  <textarea value={draft[cField]} onChange={e => set(cField, e.target.value)} rows={3} maxLength={5000}
+                    style={{ ...fieldStyle, resize: 'vertical', background: changedSet.has(cField) ? '#FFFBEB' : C.white }} />
+                </div>
+              </div>
+            )}
+          </Card>
+        );
+      })}
+
+      <Card style={{ padding: '16px 18px', marginTop: 12, marginBottom: 80 }}>
+        <UpperLabel style={{ display: 'block', marginBottom: 6 }}>{t.globalComment}</UpperLabel>
+        <textarea value={draft[COMMENT_GLOBAL]} onChange={e => set(COMMENT_GLOBAL, e.target.value)} rows={4} maxLength={5000}
+          style={{ ...fieldStyle, resize: 'vertical', background: changedSet.has(COMMENT_GLOBAL) ? '#FFFBEB' : C.white }} />
+      </Card>
+
+      {/* Barre d'action collante */}
+      <div style={{ position: 'sticky', bottom: 0, zIndex: 50, background: 'rgba(255,255,255,0.95)', borderTop: `1px solid ${C.rule}`, padding: '12px 0', display: 'flex', alignItems: 'center', gap: 10 }}>
+        <span style={{ fontSize: 12, fontWeight: 600, color: changed.length ? C.orange : C.muted, flex: 1 }}>
+          {errMsg ? <span style={{ color: C.red }}>{errMsg}</span> : (changed.length ? t.pending(changed.length) : t.none)}
+        </span>
+        <button onClick={onCancel} disabled={saving}
+          style={{ padding: '8px 18px', borderRadius: 6, border: `1px solid ${C.rule}`, background: C.white, color: C.ink, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+          {t.cancel}
+        </button>
+        <button onClick={handleSave} disabled={saving || !changed.length}
+          style={{ padding: '8px 18px', borderRadius: 6, border: 'none', background: C.navy, color: C.white, fontSize: 13, fontWeight: 700, cursor: saving ? 'wait' : 'pointer', opacity: (saving || !changed.length) ? 0.5 : 1 }}>
+          {saving ? t.saving : t.save}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ── Main project page ─────────────────────────────────────────────────────────
 export default function ProjectPage() {
   const [records, setRecords] = useState([]);
@@ -447,7 +612,7 @@ export default function ProjectPage() {
   const [meta, setMeta] = useState(null);
   const [fcLinks, setFcLinks] = useState([]);
   const [copiedFC, setCopiedFC] = useState(null);
-  const [copiedOSCLink, setCopiedOSCLink] = useState(null);  
+  const [copiedOSCLink, setCopiedOSCLink] = useState(null);
   const [error, setError] = useState('');
   const [selectedOSC, setSelectedOSC] = useState('');
   const [selectedFCs, setSelectedFCs] = useState(new Set()); // multi-select
@@ -457,29 +622,53 @@ export default function ProjectPage() {
   const [deleting, setDeleting] = useState(false);
   const [selectedEval, setSelectedEval] = useState(null);
   const [versionByEval, setVersionByEval] = useState({});
+  const [editTarget, setEditTarget] = useState(null); // record en cours d'édition
+  const [isDirty, setIsDirty] = useState(false);
+
+  // Avertissement fermeture d'onglet / rechargement
+  useEffect(() => {
+    if (!isDirty) return;
+    const h = e => { e.preventDefault(); e.returnValue = ''; };
+    window.addEventListener('beforeunload', h);
+    return () => window.removeEventListener('beforeunload', h);
+  }, [isDirty]);
+
+  // Avertissement navigation interne
+  function confirmLeave() {
+    if (!isDirty) return true;
+    if (!window.confirm(EDIT_T[lang].leave)) return false;
+    setIsDirty(false); setEditTarget(null);
+    return true;
+  }
+
+  function handleSaved(updated) {
+    setRecords(prev => prev.map(r => r.id === updated.id ? { ...r, fields: updated.fields } : r));
+    setIsDirty(false);
+    setEditTarget(null);
+  }
 
   useEffect(() => {
-  const params = new URLSearchParams(window.location.search);
-  const k = params.get('key');
-  if (!k) { setError('invalid_link'); setLoading(false); return; }
-  const fcParam = params.get('fc'); // ← ajout
-  fetch(`/api/records?key=${k}`)
-    .then(r => r.json())
-    .then(d => {
-      if (d.error) { setError(d.error); setLoading(false); return; }
-      setRecords(d.records || []);
-      setProjet(d.projet || '');
-      setMeta({ type: d.type, facilitateur: d.facilitateur });
-      if (fcParam) setSelectedFCs(new Set(fcParam.split(','))); // ← ajout
-      if (d.type === 'project') {
-        fetch(`/api/fc-links?key=${k}`)
-          .then(r => r.json())
-          .then(fl => setFcLinks(fl.fcs || []));
-      }
-      setLoading(false);
-    })
-  .catch(() => { setError('load_error'); setLoading(false); });
-}, []);
+    const params = new URLSearchParams(window.location.search);
+    const k = params.get('key');
+    if (!k) { setError('invalid_link'); setLoading(false); return; }
+    const fcParam = params.get('fc');
+    fetch(`/api/records?key=${k}`)
+      .then(r => r.json())
+      .then(d => {
+        if (d.error) { setError(d.error); setLoading(false); return; }
+        setRecords(d.records || []);
+        setProjet(d.projet || '');
+        setMeta({ type: d.type, facilitateur: d.facilitateur });
+        if (fcParam) setSelectedFCs(new Set(fcParam.split(',')));
+        if (d.type === 'project') {
+          fetch(`/api/fc-links?key=${k}`)
+            .then(r => r.json())
+            .then(fl => setFcLinks(fl.fcs || []));
+        }
+        setLoading(false);
+      })
+      .catch(() => { setError('load_error'); setLoading(false); });
+  }, []);
 
   async function handleDelete() {
     if (!deleteTarget) return;
@@ -503,10 +692,10 @@ export default function ProjectPage() {
 
   const oscNames = [...new Set(records.map(r => safeStr(r.fields["Nom de l'OSC"])).filter(Boolean))].sort();
   const facilitateurs = meta?.type === 'project'
-  ? (PROJECT_FC[projet] || [])
-  : meta?.type === 'fc'
-    ? [...new Set(records.map(r => safeStr(r.fields["Facilitateur"])).filter(Boolean))].sort()
-    : (PROJECT_FC[projet] || [...new Set(records.map(r => safeStr(r.fields["Facilitateur"])).filter(Boolean))].sort());
+    ? (PROJECT_FC[projet] || [])
+    : meta?.type === 'fc'
+      ? [...new Set(records.map(r => safeStr(r.fields["Facilitateur"])).filter(Boolean))].sort()
+      : (PROJECT_FC[projet] || [...new Set(records.map(r => safeStr(r.fields["Facilitateur"])).filter(Boolean))].sort());
   const filteredRecords = selectedFCs.size > 0 ? records.filter(r => selectedFCs.has(safeStr(r.fields["Facilitateur"]))) : records;
   const filteredOscNames = [...new Set(filteredRecords.map(r => safeStr(r.fields["Nom de l'OSC"])).filter(Boolean))].sort();
   const filteredOSCs = filteredOscNames.filter(n => n.toLowerCase().includes(search.toLowerCase()));
@@ -555,7 +744,7 @@ export default function ProjectPage() {
   return (
     <div style={{ fontFamily: "'Inter', -apple-system, sans-serif", background: C.bg, minHeight: '100vh' }}>
       <style>{`@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap'); * { box-sizing: border-box; } button { font-family: inherit; }`}</style>
-     
+
       {/* Delete confirmation modal */}
       {deleteTarget && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 999, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
@@ -630,7 +819,7 @@ export default function ProjectPage() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
               <UpperLabel>{lang === 'en' ? 'Field catalysts' : 'Facilitateurs'}</UpperLabel>
               {selectedFCs.size > 0 && (
-                <button onClick={() => { setSelectedFCs(new Set()); setSelectedOSC(''); }}
+                <button onClick={() => { if (!confirmLeave()) return; setSelectedFCs(new Set()); setSelectedOSC(''); }}
                   style={{ fontSize: 10, color: C.muted, background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', padding: 0, fontFamily: 'inherit' }}>
                   {lang === 'en' ? 'Clear filter' : 'Tout afficher'}
                 </button>
@@ -662,6 +851,7 @@ export default function ProjectPage() {
                   }}>
                     {/* Clickable card header */}
                     <div onClick={() => {
+                        if (!confirmLeave()) return;
                         const next = new Set(selectedFCs);
                         if (next.has(fc)) next.delete(fc); else next.add(fc);
                         setSelectedFCs(next);
@@ -726,15 +916,15 @@ export default function ProjectPage() {
             style={{ width: '100%', maxWidth: 400, padding: '9px 14px', borderRadius: 8, border: `1px solid ${C.rule}`, fontSize: 13, color: C.ink, outline: 'none', fontFamily: 'inherit', background: C.white }}
           />
         </div>
-        
+
 
         {/* OSC detail view (selected) */}
-        
+
         {selectedOSC && oscRecords.length > 0 ? (
           <div style={{ maxWidth: 1080 }}>
             {/* Back button */}
             <button
-              onClick={() => { setSelectedOSC(''); setSelectedEval(null); setVersionByEval({}); }}
+              onClick={() => { if (!confirmLeave()) return; setEditTarget(null); setSelectedOSC(''); setSelectedEval(null); setVersionByEval({}); }}
               style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 14px', borderRadius: 6, border: `1px solid ${C.rule}`, background: C.white, color: C.mid, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', marginBottom: 20 }}
             >
               ← {lang === 'en' ? 'Back to list' : 'Retour à la liste'}
@@ -745,56 +935,85 @@ export default function ProjectPage() {
                 {displayCountry(safeStr(oscRecords[0]?.fields?.Pays), lang)}
               </UpperLabel>
               <h2 style={{ fontSize: 28, fontWeight: 900, color: C.ink, margin: '0 0 12px', letterSpacing: -0.5 }}>{selectedOSC}</h2>
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                <button
-                  className="no-print"
-                  onClick={() => {
-                    if (pdfRecord?.id) window.open(`/?id=${pdfRecord.id}&print=1`, '_blank');
-                  }}
-                  style={{
-                    padding: '7px 16px', borderRadius: 6, border: `1px solid ${C.rule}`,
-                    background: C.white, color: C.navy, fontSize: 12, fontWeight: 600,
-                    cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6,
-                    fontFamily: 'inherit',
-                  }}
-                >
-                  <span style={{ fontSize: 14 }}>⬇</span> {lang === 'en' ? 'Download PDF' : 'Télécharger PDF'}
-                  {pdfRecord && recordsByEvalForOSC[pdfEval]?.length > 1 && (
-                    <span style={{ fontSize: 10, color: C.muted, fontWeight: 400 }}>
-                      ({EVAL_SHORT[pdfEval]} · {safeStr(pdfRecord.fields['Date de soumission']) || '—'})
-                    </span>
-                  )}
-                </button>
 
-                {presentEvalsForOSC.map(e => {
-                  const rec = getActiveRecordForEval(e);
-                  if (!rec) return null;
-                  const submDate = safeStr(rec.fields['Date de soumission']);
-                  return (
-                    <button key={e}
-                      className="no-print"
-                      onClick={() => setDeleteTarget({
-                        id: rec.id,
-                        name: `${selectedOSC} — ${EVAL_SHORT[e]}${submDate ? ` (${submDate})` : ''}`
-                      })}
-                      style={{
-                        padding: '7px 12px', borderRadius: 6, border: `1px solid #FECACA`,
-                        background: '#FEF2F2', color: C.red, fontSize: 12, fontWeight: 600,
-                        cursor: 'pointer', display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: 2,
-                        fontFamily: 'inherit', lineHeight: 1.3,
-                      }}
-                    >
-                      <span>🗑 {lang === 'en' ? 'Delete' : 'Supprimer'} {EVAL_SHORT[e]}</span>
-                      {submDate && <span style={{ fontSize: 10, fontWeight: 400, color: C.muted }}>{submDate}</span>}
-                    </button>
-                  );
-                })}
-              </div>
+              {!editTarget && (
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <button
+                    className="no-print"
+                    onClick={() => {
+                      if (pdfRecord?.id) window.open(`/?id=${pdfRecord.id}&print=1`, '_blank');
+                    }}
+                    style={{
+                      padding: '7px 16px', borderRadius: 6, border: `1px solid ${C.rule}`,
+                      background: C.white, color: C.navy, fontSize: 12, fontWeight: 600,
+                      cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6,
+                      fontFamily: 'inherit',
+                    }}
+                  >
+                    <span style={{ fontSize: 14 }}>⬇</span> {lang === 'en' ? 'Download PDF' : 'Télécharger PDF'}
+                    {pdfRecord && recordsByEvalForOSC[pdfEval]?.length > 1 && (
+                      <span style={{ fontSize: 10, color: C.muted, fontWeight: 400 }}>
+                        ({EVAL_SHORT[pdfEval]} · {safeStr(pdfRecord.fields['Date de soumission']) || '—'})
+                      </span>
+                    )}
+                  </button>
+
+                  {presentEvalsForOSC.map(e => {
+                    const rec = getActiveRecordForEval(e);
+                    if (!rec) return null;
+                    const submDate = safeStr(rec.fields['Date de soumission']);
+                    return (
+                      <div key={e} style={{ display: 'inline-flex', gap: 4 }}>
+                        {/* Modifier */}
+                        <button
+                          className="no-print"
+                          onClick={() => setEditTarget(rec)}
+                          style={{
+                            padding: '7px 12px', borderRadius: 6, border: `1px solid ${C.rule}`,
+                            background: C.white, color: C.navy, fontSize: 12, fontWeight: 600,
+                            cursor: 'pointer', display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: 2,
+                            fontFamily: 'inherit', lineHeight: 1.3,
+                          }}
+                        >
+                          <span>✏️ {EDIT_T[lang].edit} {EVAL_SHORT[e]}</span>
+                          {submDate && <span style={{ fontSize: 10, fontWeight: 400, color: C.muted }}>{submDate}</span>}
+                        </button>
+                        {/* Supprimer */}
+                        <button
+                          className="no-print"
+                          onClick={() => setDeleteTarget({
+                            id: rec.id,
+                            name: `${selectedOSC} — ${EVAL_SHORT[e]}${submDate ? ` (${submDate})` : ''}`
+                          })}
+                          style={{
+                            padding: '7px 12px', borderRadius: 6, border: `1px solid #FECACA`,
+                            background: '#FEF2F2', color: C.red, fontSize: 12, fontWeight: 600,
+                            cursor: 'pointer', display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: 2,
+                            fontFamily: 'inherit', lineHeight: 1.3,
+                          }}
+                        >
+                          <span>🗑 {lang === 'en' ? 'Delete' : 'Supprimer'} {EVAL_SHORT[e]}</span>
+                          {submDate && <span style={{ fontSize: 10, fontWeight: 400, color: C.muted }}>{submDate}</span>}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
-            <OSCDetail oscName={selectedOSC} oscRecords={oscRecords} lang={lang}
-              selectedEval={selectedEval} setSelectedEval={setSelectedEval}
-              versionByEval={versionByEval} setVersionByEval={setVersionByEval}
-            />
+
+            {editTarget ? (
+              <EvalEditor record={editTarget} lang={lang}
+                onCancel={() => { if (confirmLeave()) setEditTarget(null); }}
+                onSaved={handleSaved}
+                onDirtyChange={setIsDirty}
+              />
+            ) : (
+              <OSCDetail oscName={selectedOSC} oscRecords={oscRecords} lang={lang}
+                selectedEval={selectedEval} setSelectedEval={setSelectedEval}
+                versionByEval={versionByEval} setVersionByEval={setVersionByEval}
+              />
+            )}
           </div>
         ) : (
           /* OSC card grid */
@@ -838,13 +1057,13 @@ export default function ProjectPage() {
               })}
             </div>
             {filteredOSCs.length === 0 && (
-            <div style={{ padding: 40, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
-              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke={C.muted} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-              </svg>
-              <span style={{ fontSize: 13, color: C.muted }}>{lang === 'en' ? 'No results' : 'Aucun résultat'}</span>
-            </div>
-          )}
+              <div style={{ padding: 40, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke={C.muted} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                </svg>
+                <span style={{ fontSize: 13, color: C.muted }}>{lang === 'en' ? 'No results' : 'Aucun résultat'}</span>
+              </div>
+            )}
           </div>
         )}
       </div>

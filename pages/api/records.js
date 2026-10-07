@@ -1,3 +1,66 @@
+import { QUESTIONS, ANSWER_OPTIONS, COMMENT_FIELDS as EDITABLE_COMMENT_FIELDS } from '../../config';
+
+// Tables de tokens — une seule source pour GET / DELETE / PATCH
+function getTokenMaps() {
+  const P = [
+    ['TOKEN_SAMIM2', 'SAMIM2'], ['TOKEN_EUREACH', 'EU REACH CSO'],
+    ['TOKEN_BUNYAN', 'BUNYAN'], ['TOKEN_SEEED', 'SEEED'],
+  ];
+  const F = [
+    ['TOKEN_FC_AVILLAGE', 'A village at a time', 'EU REACH CSO'],
+    ['TOKEN_FC_AGRIPREMIUM', 'Agripremium', 'EU REACH CSO'],
+    ['TOKEN_FC_ANGELS', 'Angels Resources Centre', 'EU REACH CSO'],
+    ['TOKEN_FC_ESISIPHO', 'Esisipho K', 'EU REACH CSO'],
+    ['TOKEN_FC_LUHNYEZI', 'Luhnyezi', 'EU REACH CSO'],
+    ['TOKEN_FC_POWEROFWELL', 'Power of Well', 'EU REACH CSO'],
+    ['TOKEN_FC_SOTHABA', 'Sothaba', 'EU REACH CSO'],
+    ['TOKEN_FC_UNNATI', 'Unnati', 'EU REACH CSO'],
+    ['TOKEN_FC_SA1', 'ECODEV', 'SAMIM2'],
+    ['TOKEN_FC_SA2', 'MCISE', 'SAMIM2'],
+    ['TOKEN_FC_SA3', 'Jordan Youth Innovation Forum', 'SAMIM2'],
+    ['TOKEN_FC_SA4', "Lab'ess", 'SAMIM2'],
+    ['TOKEN_FC_SOUHAIL', 'Souhail Boukraa', 'BUNYAN'],
+    ['TOKEN_FC_YOUNESS', 'Youness Boudohay', 'BUNYAN'],
+    ['TOKEN_FC_NAJLAA', 'Najlaa Fathi', 'BUNYAN'],
+    ['TOKEN_FC_ABDELJALIL', 'Abdeljalil Amzil', 'BUNYAN'],
+    ['TOKEN_FC_MAYA', 'Maya', 'SEEED'], ['TOKEN_FC_NAX', 'Nax', 'SEEED'],
+    ['TOKEN_FC_FARA', 'Fara', 'SEEED'], ['TOKEN_FC_HERY', 'Hery', 'SEEED'],
+    ['TOKEN_FC_ANJA', 'Anja', 'SEEED'],
+  ];
+  const PROJECT_TOKENS = {}, FC_TOKENS = {};
+  // On ignore toute variable absente ou vide → plus de clé "undefined"
+  for (const [env, projet] of P) { const v = process.env[env]; if (v) PROJECT_TOKENS[v] = { type: 'project', projet }; }
+  for (const [env, name, projet] of F) { const v = process.env[env]; if (v) FC_TOKENS[v] = { name, projet }; }
+  return { PROJECT_TOKENS, FC_TOKENS };
+}
+
+// Validation des champs modifiables
+const QUESTION_IDS = new Set(QUESTIONS.map(q => q.id));
+const COMMENT_SET = new Set(EDITABLE_COMMENT_FIELDS);
+function sanitizeUpdate(input) {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) return { error: 'Body invalide' };
+  const out = {};
+  for (const [k, v] of Object.entries(input)) {
+    const qm = /^\[(\d+\.\d+)\] /.exec(k);
+    const am = /^Appui structure — (\d+\.\d+)$/.exec(k);
+    if (qm && QUESTION_IDS.has(qm[1])) {
+      if (v !== null && !ANSWER_OPTIONS.includes(v)) return { error: `Valeur invalide : ${k}` };
+      out[k] = v;
+    } else if (am && QUESTION_IDS.has(am[1])) {
+      if (v !== null && v !== 'Oui' && v !== 'Non') return { error: `Valeur invalide : ${k}` };
+      out[k] = v;
+    } else if (COMMENT_SET.has(k)) {
+      if (v !== null && typeof v !== 'string') return { error: `Valeur invalide : ${k}` };
+      if (typeof v === 'string' && v.length > 5000) return { error: `Trop long : ${k}` };
+      out[k] = v ?? '';
+    } else {
+      return { error: `Champ non modifiable : ${k}` }; // scores, Facilitateur, Projet, nom OSC… refusés
+    }
+  }
+  if (!Object.keys(out).length) return { error: 'Aucun champ à modifier' };
+  return { fields: out };
+}
+
 export default async function handler(req, res) {
   const BASE_ID = 'appi5FTnHDJYAqFOm';
   const TABLE_ID = 'tblwEY5bGzB3mZyZ7';
@@ -11,38 +74,7 @@ export default async function handler(req, res) {
       const { key, deleteId } = req.query;
       if (!key || !deleteId) return res.status(400).json({ error: 'key et deleteId requis' });
 
-      const PROJECT_TOKENS = {
-        [process.env.TOKEN_SAMIM2]:   { type: 'project', projet: 'SAMIM2' },
-        [process.env.TOKEN_EUREACH]:  { type: 'project', projet: 'EU REACH CSO' },
-        [process.env.TOKEN_BUNYAN]:   { type: 'project', projet: 'BUNYAN' },
-        [process.env.TOKEN_SEEED]:    { type: 'project', projet: 'SEEED' },
-      };
-      const FC_TOKENS = {
-        [process.env.TOKEN_FC_AVILLAGE]:   { name: 'A village at a time',    projet: 'EU REACH CSO' },
-        [process.env.TOKEN_FC_AGRIPREMIUM]:{ name: 'Agripremium',            projet: 'EU REACH CSO' },
-        [process.env.TOKEN_FC_ANGELS]:     { name: 'Angels Resources Centre', projet: 'EU REACH CSO' },
-        [process.env.TOKEN_FC_ESISIPHO]:   { name: 'Esisipho K',             projet: 'EU REACH CSO' },
-        [process.env.TOKEN_FC_LUHNYEZI]:   { name: 'Luhnyezi',               projet: 'EU REACH CSO' },
-        [process.env.TOKEN_FC_POWEROFWELL]:{ name: 'Power of Well',          projet: 'EU REACH CSO' },
-        [process.env.TOKEN_FC_SOTHABA]:    { name: 'Sothaba',                projet: 'EU REACH CSO' },
-        [process.env.TOKEN_FC_UNNATI]:     { name: 'Unnati',                 projet: 'EU REACH CSO' },
-        // SAMIM2
-        [process.env.TOKEN_FC_SA1]:  { name: 'ECODEV',  projet: 'SAMIM2' },
-        [process.env.TOKEN_FC_SA2]:  { name: 'MCISE',  projet: 'SAMIM2' },
-        [process.env.TOKEN_FC_SA3]:  { name: 'Jordan Youth Innovation Forum',  projet: 'SAMIM2' },
-        [process.env.TOKEN_FC_SA4]:  { name: "Lab'ess",  projet: 'SAMIM2' },
-        // BUNYAN
-        [process.env.TOKEN_FC_SOUHAIL]:    { name: 'Souhail Boukraa',    projet: 'BUNYAN' },
-        [process.env.TOKEN_FC_YOUNESS]:    { name: 'Youness Boudohay',   projet: 'BUNYAN' },
-        [process.env.TOKEN_FC_NAJLAA]:     { name: 'Najlaa Fathi',       projet: 'BUNYAN' },
-        [process.env.TOKEN_FC_ABDELJALIL]: { name: 'Abdeljalil Amzil',   projet: 'BUNYAN' },
-        // SEEED
-        [process.env.TOKEN_FC_MAYA]: { name: 'Maya', projet: 'SEEED' },
-        [process.env.TOKEN_FC_NAX]:  { name: 'Nax',  projet: 'SEEED' },
-        [process.env.TOKEN_FC_FARA]: { name: 'Fara', projet: 'SEEED' },
-        [process.env.TOKEN_FC_HERY]: { name: 'Hery', projet: 'SEEED' },
-        [process.env.TOKEN_FC_ANJA]: { name: 'Anja', projet: 'SEEED' },
-      };
+      const { PROJECT_TOKENS, FC_TOKENS } = getTokenMaps();
 
       const projMatch = PROJECT_TOKENS[key];
       const fcMatch = FC_TOKENS[key];
@@ -89,6 +121,54 @@ export default async function handler(req, res) {
     }
   }
 
+    // ── PATCH — modification d'une évaluation par FC / Chef de projet ───────────
+  if (req.method === 'PATCH') {
+    try {
+      const { key, updateId } = req.query;
+      if (!key || !updateId) return res.status(400).json({ error: 'key et updateId requis' });
+
+      const { PROJECT_TOKENS, FC_TOKENS } = getTokenMaps();
+      const projMatch = PROJECT_TOKENS[key];
+      const fcMatch = FC_TOKENS[key];
+      if (!projMatch && !fcMatch) return res.status(403).json({ error: 'Accès refusé' });
+
+      const { fields, error } = sanitizeUpdate(req.body?.fields);
+      if (error) return res.status(400).json({ error });
+
+      // Vérifier le périmètre (même logique que DELETE)
+      const recUrl = `https://api.airtable.com/v0/${BASE_ID}/${TABLE_ID}/${updateId}`;
+      const checkResp = await fetch(recUrl, { headers: { Authorization: `Bearer ${TOKEN}` } });
+      const checkBody = await checkResp.json();
+      if (!checkResp.ok) return res.status(404).json({ error: 'Record introuvable' });
+      if (checkBody.fields?.Statut_Record === 'deleted') return res.status(404).json({ error: 'Record supprimé' });
+
+      const recProjet = checkBody.fields?.Projet || '';
+      const recFC = checkBody.fields?.Facilitateur || '';
+      if (projMatch && recProjet !== projMatch.projet) return res.status(403).json({ error: 'Hors périmètre projet' });
+      if (fcMatch && (recProjet !== fcMatch.projet || recFC !== fcMatch.name)) return res.status(403).json({ error: 'Hors périmètre facilitateur' });
+
+      // Écriture
+      const patchResp = await fetch(recUrl, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${TOKEN}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          typecast: false,
+          fields: {
+            ...fields,
+            'Modifié par': fcMatch ? fcMatch.name : `Chef de projet (${projMatch.projet})`,
+            'Date de modification': new Date().toISOString(),
+          },
+        }),
+      });
+      const patchBody = await patchResp.json();
+      if (!patchResp.ok) return res.status(500).json({ error: 'Échec mise à jour', detail: patchBody?.error?.message || '' });
+
+      return res.status(200).json({ record: patchBody }); // scores déjà recalculés par les formules
+    } catch (err) {
+      return res.status(500).json({ error: 'Exception serveur', message: err.message });
+    }
+  }
+
   // ── GET — le reste inchangé ────────────────────────────────────────────────
   const { id, key } = req.query;
 
@@ -107,40 +187,9 @@ export default async function handler(req, res) {
     return res.status(200).json({ records: allData.records || [], oscName: nomOSC });
   }
 
-  if (key) {
-    const PROJECT_TOKENS = {
-      [process.env.TOKEN_SAMIM2]:   { type: 'project', projet: 'SAMIM2' },
-      [process.env.TOKEN_EUREACH]:  { type: 'project', projet: 'EU REACH CSO' },
-      [process.env.TOKEN_BUNYAN]:   { type: 'project', projet: 'BUNYAN' },
-      [process.env.TOKEN_SEEED]:    { type: 'project', projet: 'SEEED' },   // ← ligne à ajouter
-    };
-    const FC_TOKENS = {
-      [process.env.TOKEN_FC_AVILLAGE]:   { name: 'A village at a time',    projet: 'EU REACH CSO' },
-      [process.env.TOKEN_FC_AGRIPREMIUM]:{ name: 'Agripremium',            projet: 'EU REACH CSO' },
-      [process.env.TOKEN_FC_ANGELS]:     { name: 'Angels Resources Centre', projet: 'EU REACH CSO' },
-      [process.env.TOKEN_FC_ESISIPHO]:   { name: 'Esisipho K',             projet: 'EU REACH CSO' },
-      [process.env.TOKEN_FC_LUHNYEZI]:   { name: 'Luhnyezi',               projet: 'EU REACH CSO' },
-      [process.env.TOKEN_FC_POWEROFWELL]:{ name: 'Power of Well',          projet: 'EU REACH CSO' },
-      [process.env.TOKEN_FC_SOTHABA]:    { name: 'Sothaba',                projet: 'EU REACH CSO' },
-      [process.env.TOKEN_FC_UNNATI]:     { name: 'Unnati',                 projet: 'EU REACH CSO' },
-      // SAMIM2
-      [process.env.TOKEN_FC_SA1]:  { name: 'ECODEV',  projet: 'SAMIM2' },
-      [process.env.TOKEN_FC_SA2]:  { name: 'MCISE',  projet: 'SAMIM2' },
-      [process.env.TOKEN_FC_SA3]:  { name: 'Jordan Youth Innovation Forum',  projet: 'SAMIM2' },
-      [process.env.TOKEN_FC_SA4]:  { name: "Lab'ess",  projet: 'SAMIM2' },
-      // BUNYAN
-      [process.env.TOKEN_FC_SOUHAIL]:    { name: 'Souhail Boukraa',    projet: 'BUNYAN' },
-      [process.env.TOKEN_FC_YOUNESS]:    { name: 'Youness Boudohay',   projet: 'BUNYAN' },
-      [process.env.TOKEN_FC_NAJLAA]:     { name: 'Najlaa Fathi',       projet: 'BUNYAN' },
-      [process.env.TOKEN_FC_ABDELJALIL]: { name: 'Abdeljalil Amzil',   projet: 'BUNYAN' },
-      // SEEED ← bloc à ajouter
-      [process.env.TOKEN_FC_MAYA]: { name: 'Maya', projet: 'SEEED' },
-      [process.env.TOKEN_FC_NAX]:  { name: 'Nax',  projet: 'SEEED' },
-      [process.env.TOKEN_FC_FARA]: { name: 'Fara', projet: 'SEEED' },
-      [process.env.TOKEN_FC_HERY]: { name: 'Hery', projet: 'SEEED' },
-      [process.env.TOKEN_FC_ANJA]: { name: 'Anja', projet: 'SEEED' },
-    };
 
+  if (key) {                     
+    const { PROJECT_TOKENS, FC_TOKENS } = getTokenMaps();
     const projectMatch = PROJECT_TOKENS[key];
     const fcMatch = FC_TOKENS[key];
     if (!projectMatch && !fcMatch) return res.status(403).json({ error: 'Accès refusé' });
@@ -169,4 +218,4 @@ export default async function handler(req, res) {
   }
 
   return res.status(400).json({ error: 'Paramètre id ou key requis' });
-}
+  }

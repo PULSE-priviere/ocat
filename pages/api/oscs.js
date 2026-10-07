@@ -6,15 +6,19 @@ export default async function handler(req, res) {
 
   if (!TOKEN) return res.status(500).json({ error: 'Token non configuré' });
 
-  const PROJECT_TOKENS = {
-    [process.env.TOKEN_SAMIM2]: 'SAMIM2',
-    [process.env.TOKEN_EUREACH]: 'EU REACH CSO',
-  };
+    const PROJECT_TOKENS = {};
+  for (const [env, p] of [
+    ['TOKEN_SAMIM2', 'SAMIM2'], ['TOKEN_EUREACH', 'EU REACH CSO'],
+    ['TOKEN_BUNYAN', 'BUNYAN'], ['TOKEN_SEEED', 'SEEED'],
+  ]) { if (process.env[env]) PROJECT_TOKENS[process.env[env]] = p; }
 
   const projet = key ? PROJECT_TOKENS[key] : null;
   if (key && !projet) return res.status(403).json({ error: 'Accès refusé' });
 
-  const filter = projet ? `&filterByFormula=${encodeURIComponent(`{Projet}="${projet}"`)}` : '';
+  const conds = ['{Statut_Record}!="deleted"'];
+  if (projet) conds.push(`{Projet}="${projet}"`);
+  const filter = `&filterByFormula=${encodeURIComponent(`AND(${conds.join(',')})`)}`;
+
   const allRecords = [];
   let offset = null;
 

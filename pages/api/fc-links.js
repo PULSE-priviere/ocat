@@ -2,13 +2,13 @@
 export default function handler(req, res) {
   const { key } = req.query;
 
-  const PROJECT_TOKENS = {
-    [process.env.TOKEN_SAMIM2]:  'SAMIM2',
-    [process.env.TOKEN_EUREACH]: 'EU REACH CSO',
-    [process.env.TOKEN_BUNYAN]:  'BUNYAN',
-  };
+  const PROJECT_TOKENS = {};
+  for (const [env, p] of [
+    ['TOKEN_SAMIM2', 'SAMIM2'], ['TOKEN_EUREACH', 'EU REACH CSO'],
+    ['TOKEN_BUNYAN', 'BUNYAN'], ['TOKEN_SEEED', 'SEEED'],
+  ]) { if (process.env[env]) PROJECT_TOKENS[process.env[env]] = p; }
 
-  const projet = PROJECT_TOKENS[key];
+  const projet = key ? PROJECT_TOKENS[key] : null;
   if (!projet) return res.status(403).json({ error: 'Accès refusé' });
 
   const BASE_URL = process.env.APP_URL || 'https://ocat-red.vercel.app';
@@ -35,6 +35,13 @@ export default function handler(req, res) {
       { name: 'Youness Boudohay',  token: process.env.TOKEN_FC_YOUNESS },
       { name: 'Najlaa Fathi',      token: process.env.TOKEN_FC_NAJLAA },
       { name: 'Abdeljalil Amzil',  token: process.env.TOKEN_FC_ABDELJALIL },
+    ],
+    'SEEED': [
+      { name: 'Maya', token: process.env.TOKEN_FC_MAYA },
+      { name: 'Nax',  token: process.env.TOKEN_FC_NAX },
+      { name: 'Fara', token: process.env.TOKEN_FC_FARA },
+      { name: 'Hery', token: process.env.TOKEN_FC_HERY },
+      { name: 'Anja', token: process.env.TOKEN_FC_ANJA },
     ],
   };
 
