@@ -155,7 +155,7 @@ export default async function handler(req, res) {
           typecast: false,
           fields: {
             ...fields,
-            'Modifié par': fcMatch ? fcMatch.name : `Chef de projet (${projMatch.projet})`,
+            'Modifie_par': fcMatch ? fcMatch.name : `Chef de projet (${projMatch.projet})`,
             'Date de modification': new Date().toISOString(),
           },
         }),
