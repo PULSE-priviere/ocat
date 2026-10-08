@@ -20,6 +20,19 @@ function safeStr(v) {
   if (v === null || v === undefined || typeof v === 'object') return '';
   return String(v);
 }
+// Tri des versions : date de création Airtable (fiable, toujours présente)
+function byCreated(a, b) {
+  return safeStr(a.createdTime).localeCompare(safeStr(b.createdTime));
+}
+// Date affichée : Date de soumission si remplie, sinon date de création
+function recDate(rec, lang) {
+  const d = safeStr(rec?.fields?.['Date de soumission']);
+  if (d) return d;
+  const c = safeStr(rec?.createdTime);
+  if (!c) return '';
+  return new Date(c).toLocaleDateString(lang === 'en' ? 'en-GB' : 'fr-FR',
+    { day: '2-digit', month: 'short', year: 'numeric' });
+}
 function getScoreNum(v) {
   const s = safeStr(v);
   if (s.startsWith('1')) return 1;
@@ -219,7 +232,7 @@ function OSCDetail({ oscName, oscRecords, lang, selectedEval, setSelectedEval, v
   for (const e of EVAL_ORDER) {
     recordsByEval[e] = oscRecords
       .filter(r => safeStr(r.fields["Type d'évaluation"]) === e)
-      .sort((a, b) => safeStr(a.fields['Date de soumission']).localeCompare(safeStr(b.fields['Date de soumission'])));
+      .sort(byCreated);
   }
 
   const allPresentEvals = EVAL_ORDER.filter(e => recordsByEval[e].length > 0);
@@ -261,7 +274,7 @@ function OSCDetail({ oscName, oscRecords, lang, selectedEval, setSelectedEval, v
                 <div style={{ display: 'flex', gap: 4 }}>
                   {versions.map((rec, i) => {
                     const isActive = current?.id === rec.id;
-                    const date = safeStr(rec.fields['Date de soumission']);
+                    const date = recDate(rec, lang);
                     const label = `v${i + 1}${date ? ` - ${date}` : ''}`;
                     return (
                       <button key={rec.id}
@@ -290,7 +303,7 @@ function OSCDetail({ oscName, oscRecords, lang, selectedEval, setSelectedEval, v
           const rec = getRecordForEval(evalType);
           const score = safeNum(rec?.fields?.Score_Global);
           const niveau = safeStr(rec?.fields?.Niveau_Global);
-          const date = safeStr(rec?.fields?.['Date de soumission']);
+          const date = recDate(rec, lang);
           const sc = score !== null ? (score >= 7 ? C.green : score >= 5 ? C.orange : C.red) : C.muted;
           const isActive = selectedEval === evalType;
           return (
@@ -706,7 +719,7 @@ export default function ProjectPage() {
   for (const e of EVAL_ORDER) {
     recordsByEvalForOSC[e] = oscRecords
       .filter(r => safeStr(r.fields["Type d'évaluation"]) === e)
-      .sort((a, b) => safeStr(a.fields['Date de soumission']).localeCompare(safeStr(b.fields['Date de soumission'])));
+      .sort(byCreated);
   }
   const presentEvalsForOSC = EVAL_ORDER.filter(e => recordsByEvalForOSC[e].length > 0);
   function getActiveRecordForEval(e) {
@@ -758,6 +771,10 @@ export default function ProjectPage() {
                 ? `You are about to permanently delete the assessment for "${deleteTarget.name}". This action is irreversible.`
                 : `Vous êtes sur le point de supprimer définitivement l'évaluation de « ${deleteTarget.name} ». Cette action est irréversible.`}
             </p>
+            <div style={{ fontSize: 12, color: C.mid, background: C.bg, borderRadius: 6, padding: '10px 12px', margin: '0 0 20px', lineHeight: 1.7 }}>
+              {lang === 'en' ? 'Global score' : 'Score global'} : <b>{typeof deleteTarget.score === 'number' ? deleteTarget.score.toFixed(1) : '—'} / 10</b><br />
+              ID : <code>{deleteTarget.id}</code>
+            </div>
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
               <button onClick={() => setDeleteTarget(null)} disabled={deleting}
                 style={{ padding: '8px 18px', borderRadius: 6, border: `1px solid ${C.rule}`, background: C.white, color: C.ink, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
@@ -953,7 +970,7 @@ export default function ProjectPage() {
                     <span style={{ fontSize: 14 }}>⬇</span> {lang === 'en' ? 'Download PDF' : 'Télécharger PDF'}
                     {pdfRecord && recordsByEvalForOSC[pdfEval]?.length > 1 && (
                       <span style={{ fontSize: 10, color: C.muted, fontWeight: 400 }}>
-                        ({EVAL_SHORT[pdfEval]} · {safeStr(pdfRecord.fields['Date de soumission']) || '—'})
+                        ({EVAL_SHORT[pdfEval]} v{recordsByEvalForOSC[pdfEval].indexOf(pdfRecord) + 1} · {recDate(pdfRecord, lang) || '—'})
                       </span>
                     )}
                   </button>
@@ -961,7 +978,9 @@ export default function ProjectPage() {
                   {presentEvalsForOSC.map(e => {
                     const rec = getActiveRecordForEval(e);
                     if (!rec) return null;
-                    const submDate = safeStr(rec.fields['Date de soumission']);
+                    const submDate = recDate(rec, lang);
+                    const vers = recordsByEvalForOSC[e];
+                    const vTag = vers.length > 1 ? ` v${vers.indexOf(rec) + 1}` : '';
                     return (
                       <div key={e} style={{ display: 'inline-flex', gap: 4 }}>
                         {/* Modifier */}
@@ -975,7 +994,7 @@ export default function ProjectPage() {
                             fontFamily: 'inherit', lineHeight: 1.3,
                           }}
                         >
-                          <span>✏️ {EDIT_T[lang].edit} {EVAL_SHORT[e]}</span>
+                          <span>✏️ {EDIT_T[lang].edit} {EVAL_SHORT[e]}{vTag}</span>
                           {submDate && <span style={{ fontSize: 10, fontWeight: 400, color: C.muted }}>{submDate}</span>}
                         </button>
                         {/* Supprimer */}
@@ -983,7 +1002,8 @@ export default function ProjectPage() {
                           className="no-print"
                           onClick={() => setDeleteTarget({
                             id: rec.id,
-                            name: `${selectedOSC} — ${EVAL_SHORT[e]}${submDate ? ` (${submDate})` : ''}`
+                            name: `${selectedOSC} — ${EVAL_SHORT[e]}${vTag}${submDate ? ` (${submDate})` : ''}`,
+                            score: safeNum(rec.fields.Score_Global),
                           })}
                           style={{
                             padding: '7px 12px', borderRadius: 6, border: `1px solid #FECACA`,
@@ -992,7 +1012,7 @@ export default function ProjectPage() {
                             fontFamily: 'inherit', lineHeight: 1.3,
                           }}
                         >
-                          <span>🗑 {lang === 'en' ? 'Delete' : 'Supprimer'} {EVAL_SHORT[e]}</span>
+                          <span>🗑 {lang === 'en' ? 'Delete' : 'Supprimer'} {EVAL_SHORT[e]}{vTag}</span>
                           {submDate && <span style={{ fontSize: 10, fontWeight: 400, color: C.muted }}>{submDate}</span>}
                         </button>
                       </div>

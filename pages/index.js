@@ -19,6 +19,17 @@ function safeStr(v) {
   if (v === null || v === undefined || typeof v === 'object') return '';
   return String(v);
 }
+function byCreated(a, b) {
+  return safeStr(a.createdTime).localeCompare(safeStr(b.createdTime));
+}
+function recDate(rec, lang) {
+  const d = safeStr(rec?.fields?.['Date de soumission']);
+  if (d) return d;
+  const c = safeStr(rec?.createdTime);
+  if (!c) return '';
+  return new Date(c).toLocaleDateString(lang === 'en' ? 'en-GB' : 'fr-FR',
+    { day: '2-digit', month: 'short', year: 'numeric' });
+}
 function getScoreNum(v) {
   const s = safeStr(v);
   if (s.startsWith('1')) return 1;
@@ -376,7 +387,14 @@ export default function Home() {
     records.some(r => safeStr(r.fields["Type d'évaluation"]) === e)
   );
   const presentEvals = selectedEval ? allPresentEvals.filter(e => e === selectedEval) : allPresentEvals;
-  const getRecordForEval = (e) => records.find(r => safeStr(r.fields["Type d'évaluation"]) === e);
+  // Type d'éval du lien (?id=) : CE record précis ; autres types : version la plus récente
+  const getRecordForEval = (e) => {
+    const versions = records
+      .filter(r => safeStr(r.fields["Type d'évaluation"]) === e)
+      .sort(byCreated);
+    if (!versions.length) return null;
+    return versions.find(r => r.id === directId) || versions[versions.length - 1];
+  };
 
   // Use short keys for radar to avoid Recharts issues with special chars
   const EVAL_KEY = {
@@ -574,7 +592,7 @@ export default function Home() {
                 const rec = getRecordForEval(evalType);
                 const score = safeNum(rec?.fields?.Score_Global);
                 const niveau = safeStr(rec?.fields?.Niveau_Global);
-                const date = safeStr(rec?.fields?.['Date de soumission']);
+                const date = recDate(rec, lang);
                 const sc = score !== null ? (score >= 7 ? C.green : score >= 5 ? C.orange : C.red) : C.muted;
                 const isActive = selectedEval === evalType;
                 return (
