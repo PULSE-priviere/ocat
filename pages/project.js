@@ -95,6 +95,54 @@ function ScoreChip({ val }) {
   return <span style={{ display: 'inline-block', minWidth: 32, textAlign: 'center', padding: '2px 8px', borderRadius: 4, background: st.bg, color: st.color, border: `1px solid ${st.border}`, fontSize: 11, fontWeight: 700 }}>{label}</span>;
 }
 
+// ── Identification block (même logique que index.js) ──────────────────────────
+// Plusieurs noms de colonne possibles par champ (T1 peut différer des libellés Fillout)
+const ID_FIELDS = [
+  { id: 'email', fr: 'Email',             en: 'Email',            type: 'email',
+    keys: ['Email de contact', 'Email', 'Email contact', 'Contact email'] },
+  { id: 'type',  fr: "Type d'OSC",        en: 'Organisation type',
+    keys: ["Type d'organisation", "Type d'OSC", 'Type OSC'] },
+  { id: 'size',  fr: 'Taille',            en: 'Size (staff)',
+    keys: ["Taille (nombre d'employes)", "Taille (nombre d'employés)", 'Taille'] },
+  { id: 'mode',  fr: 'Mode de passation', en: 'Completion mode',
+    keys: ['Mode de passation'] },
+  { id: 'facil', fr: 'Facilitateur',      en: 'Facilitator',
+    keys: ['Facilitateur', 'Facilitateur PULSE'] },
+];
+
+function pickField(fields, keys) {
+  for (const k of keys) {
+    const v = fields?.[k];
+    const s = Array.isArray(v) ? v.map(safeStr).filter(Boolean).join(', ') : safeStr(v);
+    if (s) return s;
+  }
+  return '';
+}
+
+function IdentityBlock({ fields, lang }) {
+  const items = ID_FIELDS
+    .map(f => ({ ...f, value: pickField(fields, f.keys) }))
+    .filter(f => f.value);
+  if (!items.length) return null;
+  return (
+    <div style={{
+      display: 'flex', flexWrap: 'wrap', gap: '6px 22px',
+      margin: '0 0 16px', fontSize: 13, color: C.mid,
+    }}>
+      {items.map(f => (
+        <div key={f.id}>
+          <span style={{ fontWeight: 600, color: C.ink }}>
+            {lang === 'en' ? f.en : f.fr} :{' '}
+          </span>
+          {f.type === 'email'
+            ? <a href={`mailto:${f.value}`} style={{ color: C.blue, textDecoration: 'none' }}>{f.value}</a>
+            : f.value}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ── Section detail (same as index.js) ─────────────────────────────────────────
 function SectionDetail({ sec, questions, presentEvals, getRecordForEval, lang }) {
   const qRows = questions.map(q => {
@@ -714,6 +762,9 @@ export default function ProjectPage() {
   const filteredOSCs = filteredOscNames.filter(n => n.toLowerCase().includes(search.toLowerCase()));
   const oscRecords = selectedOSC ? filteredRecords.filter(r => safeStr(r.fields["Nom de l'OSC"]) === selectedOSC) : [];
 
+  // Record utilisé pour le bloc d'identification : le plus récent de l'OSC
+  const identRec = oscRecords.length ? [...oscRecords].sort(byCreated)[oscRecords.length - 1] : null;
+
   // Version tracking pour l'OSC actuellement affichée
   const recordsByEvalForOSC = {};
   for (const e of EVAL_ORDER) {
@@ -951,7 +1002,10 @@ export default function ProjectPage() {
               <UpperLabel style={{ display: 'block', marginBottom: 6 }}>
                 {displayCountry(safeStr(oscRecords[0]?.fields?.Pays), lang)}
               </UpperLabel>
-              <h2 style={{ fontSize: 28, fontWeight: 900, color: C.ink, margin: '0 0 12px', letterSpacing: -0.5 }}>{selectedOSC}</h2>
+              <h2 style={{ fontSize: 28, fontWeight: 900, color: C.ink, margin: '0 0 8px', letterSpacing: -0.5 }}>{selectedOSC}</h2>
+
+              {/* Bloc d'identification (page « Identification » du formulaire) */}
+              {identRec && <IdentityBlock fields={identRec.fields} lang={lang} />}
 
               {!editTarget && (
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>

@@ -134,6 +134,54 @@ function UpperLabel({ children, style }) {
   );
 }
 
+// ── Identification block ──────────────────────────────────────────────────────
+// Plusieurs noms de colonne possibles par champ (T1 peut différer des libellés Fillout)
+const ID_FIELDS = [
+  { id: 'email', fr: 'Email',             en: 'Email',            type: 'email',
+    keys: ['Email de contact', 'Email', 'Email contact', 'Contact email'] },
+  { id: 'type',  fr: "Type d'OSC",        en: 'Organisation type',
+    keys: ["Type d'organisation", "Type d'OSC", 'Type OSC'] },
+  { id: 'size',  fr: 'Taille',            en: 'Size (staff)',
+    keys: ["Taille (nombre d'employes)", "Taille (nombre d'employés)", 'Taille'] },
+  { id: 'mode',  fr: 'Mode de passation', en: 'Completion mode',
+    keys: ['Mode de passation'] },
+  { id: 'facil', fr: 'Facilitateur',      en: 'Facilitator',
+    keys: ['Facilitateur', 'Facilitateur PULSE'] },
+];
+
+function pickField(fields, keys) {
+  for (const k of keys) {
+    const v = fields?.[k];
+    const s = Array.isArray(v) ? v.map(safeStr).filter(Boolean).join(', ') : safeStr(v);
+    if (s) return s;
+  }
+  return '';
+}
+
+function IdentityBlock({ fields, lang }) {
+  const items = ID_FIELDS
+    .map(f => ({ ...f, value: pickField(fields, f.keys) }))
+    .filter(f => f.value);
+  if (!items.length) return null;
+  return (
+    <div style={{
+      display: 'flex', flexWrap: 'wrap', gap: '6px 22px',
+      margin: '0 0 16px', fontSize: 13, color: C.mid,
+    }}>
+      {items.map(f => (
+        <div key={f.id}>
+          <span style={{ fontWeight: 600, color: C.ink }}>
+            {lang === 'en' ? f.en : f.fr} :{' '}
+          </span>
+          {f.type === 'email'
+            ? <a href={`mailto:${f.value}`} style={{ color: C.blue, textDecoration: 'none' }}>{f.value}</a>
+            : f.value}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ── Section detail ────────────────────────────────────────────────────────────
 function SectionDetail({ sec, questions, presentEvals, getRecordForEval, lang }) {
   const t = I18N[lang];
@@ -396,6 +444,12 @@ export default function Home() {
     return versions.find(r => r.id === directId) || versions[versions.length - 1];
   };
 
+  // Record utilisé pour le bloc d'identification : celui du lien (?id=), sinon le plus récent
+  const identRec = (() => {
+    const sorted = [...records].sort(byCreated);
+    return sorted.find(r => r.id === directId) || sorted[sorted.length - 1] || null;
+  })();
+
   // Use short keys for radar to avoid Recharts issues with special chars
   const EVAL_KEY = {
     "Baseline (début d'accompagnement)": 'baseline',
@@ -530,8 +584,11 @@ export default function Home() {
               </UpperLabel>
               <h1 style={{
                 fontSize: 'clamp(28px, 4vw, 36px)', fontWeight: 900, color: C.ink,
-                margin: '0 0 16px', lineHeight: 1.08,
+                margin: '0 0 10px', lineHeight: 1.08,
               }}>{selectedOSC}</h1>
+
+              {/* Bloc d'identification (page « Identification » du formulaire) */}
+              {identRec && <IdentityBlock fields={identRec.fields} lang={lang} />}
               
               {/* Conteneur Flex pour mettre les boutons côte à côte */}
               <div className="no-print" style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
